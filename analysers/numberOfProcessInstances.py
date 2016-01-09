@@ -13,31 +13,23 @@ cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
-srcTable = "environment_data"
-destTable = "experiment_single_metrics"
+srcTable = "process"
+destTable = "exp_number_of_process_instances"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("Avg cpu analyser") \
+    .setAppName("Number of process instances analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
 
-def f(r):
-    if r['cpu_percent_usage'] == None:
-        return (0, 0)
-    else:
-        return (long(r["cpu_percent_usage"]), 1)
-
-data = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_percent_usage") \
+data = sc.cassandraTable(cassandraKeyspace, srcTable)\
+        .select("duration") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .map(f) \
-        .reduce(lambda a, b: (a[0]+b[0], a[1]+b[1]))
-        
-avg = data[0]/float(data[1])
-# TODO: Fix this
-query = [{"experiment_id":trialID, "cpu_avg":avg}]
+        .map(lambda r: 1) \
+        .reduce(lambda a, b: a+b)
+
+query = [{"experiment_id":trialID, "number_of_process_instances":data}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
