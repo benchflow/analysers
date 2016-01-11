@@ -60,14 +60,14 @@ dataLength = len(data)
 m = computeMedian(data)
 median = m[0]
 if m[2] == "odd":
-    q1 = computeMedian(data[0:m[1]])[0]
+    q3 = computeMedian(data[0:m[1]])[0]
 else:
-    q1 = computeMedian(data[0:m[1]-1])[0]
+    q3 = computeMedian(data[0:m[1]-1])[0]
 q2 = m[0]
 if m[2] == "even":
-    q3 = computeMedian(data[m[1]:])[0]
+    q1 = computeMedian(data[m[1]:])[0]
 else:
-    q3 = computeMedian(data[m[1]+1:])[0]
+    q1 = computeMedian(data[m[1]+1:])[0]
       
 mean = reduce(lambda x, y: x + y, data) / float(dataLength)
 variance = map(lambda x: (x - mean)**2, data)
