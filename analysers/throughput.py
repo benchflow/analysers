@@ -4,6 +4,7 @@ import io
 import gzip
 import uuid
 import math
+import datetime 
 
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
@@ -27,25 +28,32 @@ sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
 
-def f(r):
-    if r['duration'] == None:
-        return (0, 0)
-    else:
-        return (r['duration'], 0)
-
-data = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("duration") \
+data = sc.cassandraTable(cassandraKeyspace, srcTable)\
+        .select("start_time", "end_time") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .map(f) \
-        .sortByKey(0, 1) \
-        .map(lambda x: x[0]) \
+        .map(lambda r: (r['start_time'], r['end_time'])) \
         .collect()
- 
-totalTime = 0
+
+smallest = data[0][0]
+print(smallest)
 for d in data:
-    totalTime += d
-    
-tp = len(data)/float(totalTime)
+    t = d[0]
+    if t != None:
+        if t < smallest:
+            smallest = t
+        
+largest = data[0][1]
+print(largest)
+for d in data:
+    t = d[1]
+    if t != None:
+        if t > largest:
+            largest = t
+        
+delta = largest - smallest
+delta = delta.total_seconds()
+
+tp = len(data)/float(delta)
 
 # TODO: Fix this
 query = [{"experiment_id":trialID, "throughput":tp}]
