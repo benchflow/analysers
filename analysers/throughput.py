@@ -34,21 +34,29 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .map(lambda r: (r['start_time'], r['end_time'])) \
         .collect()
 
-smallest = data[0][0]
+smallest = None
 print(smallest)
 for d in data:
     t = d[0]
-    if t != None:
+    if smallest == None:
+        smallest = t
+    elif t != None:
         if t < smallest:
             smallest = t
+    else:
+        smallest = t
         
 largest = data[0][1]
 print(largest)
 for d in data:
     t = d[1]
-    if t != None:
+    if largest == None:
+        largest = t
+    elif t != None:
         if t > largest:
             largest = t
+    else:
+        largest = t
         
 delta = largest - smallest
 delta = delta.total_seconds()
