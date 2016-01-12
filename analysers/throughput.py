@@ -35,7 +35,6 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .collect()
 
 smallest = None
-print(smallest)
 for d in data:
     t = d[0]
     if smallest == None:
@@ -43,11 +42,9 @@ for d in data:
     elif t != None:
         if t < smallest:
             smallest = t
-    else:
-        smallest = t
+print(smallest)
         
 largest = None
-print(largest)
 for d in data:
     t = d[1]
     if largest == None:
@@ -55,17 +52,16 @@ for d in data:
     elif t != None:
         if t > largest:
             largest = t
-    else:
-        largest = t
+print(largest)
         
 delta = largest - smallest
 delta = delta.total_seconds()
+print(delta)
 
-tp = len(data)/float(delta)
+tp = len(data)/delta
+print(tp)
 
 # TODO: Fix this
 query = [{"experiment_id":trialID, "throughput":tp}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
-
-print(data[0])
