@@ -46,7 +46,7 @@ for d in data:
     else:
         smallest = t
         
-largest = data[0][1]
+largest = None
 print(largest)
 for d in data:
     t = d[1]
