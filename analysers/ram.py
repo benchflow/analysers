@@ -75,7 +75,7 @@ stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
 
 # TODO: Fix this
 query = [{"experiment_id":trialID, "ram_mode":mode, "ram_median":median, \
-          "ram_mean":mean, "ram_avg":mean, "ram":mean, \
+          "ram_mean":mean, "ram_avg":mean, \
           "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
           "ram_q1":q1, "ram_q2":q2, "ram_q3":q3}]
 

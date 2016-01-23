@@ -75,7 +75,7 @@ stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
 
 # TODO: Fix this
 query = [{"experiment_id":trialID, "cpu_mode":mode, "cpu_median":median, \
-          "cpu_mean":mean, "cpu_avg":mean, "cpu":mean, \
+          "cpu_mean":mean, "cpu_avg":mean, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
           "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3}]
 
