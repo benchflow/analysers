@@ -73,11 +73,16 @@ mean = reduce(lambda x, y: x + y, data) / float(dataLength)
 variance = map(lambda x: (x - mean)**2, data)
 stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
 
+stdE = stdD/float(math.sqrt(dataLength))
+marginError = stdE * 2
+CILow = mean - marginError
+CIHigh = mean + marginError
+
 # TODO: Fix this
 query = [{"experiment_id":trialID, "cpu_mode":mode, "cpu_median":median, \
           "cpu_mean":mean, "cpu_avg":mean, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
-          "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3}]
+          "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_ci95":marginError}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
