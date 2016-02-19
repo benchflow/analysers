@@ -62,6 +62,6 @@ tp = len(data)/delta
 print(tp)
 
 # TODO: Fix this
-query = [{"experiment_id":trialID, "throughput":tp}]
+query = [{"experiment_id":experimentID, "trial_id":trialID, "throughput":tp}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)

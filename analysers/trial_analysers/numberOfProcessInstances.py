@@ -29,7 +29,7 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .map(lambda r: 1) \
         .reduce(lambda a, b: a+b)
 
-query = [{"experiment_id":trialID, "number_of_process_instances":data}]
+query = [{"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":data}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 

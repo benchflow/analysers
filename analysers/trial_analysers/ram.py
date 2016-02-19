@@ -16,11 +16,11 @@ trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "environment_data"
-destTable = "exp_cpu"
+destTable = "exp_ram"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("Cpu analyser") \
+    .setAppName("Ram analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
@@ -28,13 +28,13 @@ sc = CassandraSparkContext(conf=conf)
 # TODO: Use Spark for all computations
 
 def f(r):
-    if r['cpu_percent_usage'] == None:
+    if r['memory_usage'] == None:
         return (0, 0)
     else:
-        return (r['cpu_percent_usage'], 0)
+        return (r['memory_usage'], 0)
 
 data = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_percent_usage") \
+        .select("memory_usage") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
         .map(f) \
         .sortByKey(0, 1) \
@@ -79,10 +79,10 @@ CILow = mean - marginError
 CIHigh = mean + marginError
 
 # TODO: Fix this
-query = [{"experiment_id":trialID, "cpu_mode":mode, "cpu_median":median, \
-          "cpu_mean":mean, "cpu_avg":mean, \
-          "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
-          "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_ci95":marginError}]
+query = [{"experiment_id":experimentID, "trial_id":trialID, "ram_mode":mode, "ram_median":median, \
+          "ram_mean":mean, "ram_avg":mean, \
+          "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
+          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_ci95":marginError}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
