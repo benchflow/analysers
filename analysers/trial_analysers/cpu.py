@@ -5,6 +5,9 @@ import gzip
 import uuid
 import math
 
+import scipy.integrate as integrate
+import scipy.special as special
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
@@ -29,9 +32,26 @@ sc = CassandraSparkContext(conf=conf)
 
 def f(r):
     if r['cpu_percent_usage'] == None:
-        return (0, 0)
+        return (0, 1)
     else:
-        return (r['cpu_percent_usage'], 0)
+        return (r['cpu_percent_usage'], 1)
+
+data = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("cpu_percent_usage") \
+        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .map(f) \
+        .reduceByKey(lambda a, b: a + b) \
+        .map(lambda x: (x[1], x[0])) \
+        .sortByKey(0, 1) \
+        .collect()
+    
+mode = list()
+highestCount = data[0][0]        
+for d in data:
+    if d[0] == highestCount:
+        mode.append(d[1])
+    else:
+        break
 
 data = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_percent_usage") \
@@ -41,7 +61,7 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .map(lambda x: x[0]) \
         .collect()
  
-mode = data[0]
+#mode = data[0]
 dataMin = data[-1]
 dataMax = data[0]
 
@@ -77,12 +97,15 @@ stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
+CI = [CILow, CIHigh]
+
+dataIntegral = sum(integrate.cumtrapz(data))[0]
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "cpu_mode":mode, "cpu_median":median, \
-          "cpu_mean":mean, "cpu_avg":mean, \
+          "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_weight":dataLength, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
-          "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_ci95":marginError}]
+          "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_me":marginError, "cpu_ci095":CI}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 

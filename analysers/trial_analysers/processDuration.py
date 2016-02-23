@@ -5,6 +5,9 @@ import gzip
 import uuid
 import math
 
+import scipy.integrate as integrate
+import scipy.special as special
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
@@ -29,9 +32,26 @@ sc = CassandraSparkContext(conf=conf)
 
 def f(r):
     if r['duration'] == None:
-        return (0, 0)
+        return (0, 1)
     else:
-        return (r['duration'], 0)
+        return (r['duration'], 1)
+    
+data = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("duration") \
+        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .map(f) \
+        .reduceByKey(lambda a, b: a + b) \
+        .map(lambda x: (x[1], x[0])) \
+        .sortByKey(0, 1) \
+        .collect()
+    
+mode = list()
+highestCount = data[0][0]        
+for d in data:
+    if d[0] == highestCount:
+        mode.append(d[1])
+    else:
+        break
 
 data = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("duration") \
@@ -77,12 +97,15 @@ stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
+CI = [CILow, CIHigh]
+
+dataIntegral = sum(integrate.cumtrapz(data))[0]
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "process_duration_mode":mode, "process_duration_median":median, \
-          "process_duration_mean":mean, "process_duration_avg":mean, \
+          "process_duration_mean":mean, "process_duration_avg":mean, "process_duration_integral":dataIntegral, "process_duration_weight":dataLength, \
           "process_duration_min":dataMin, "process_duration_max":dataMax, "process_duration_sd":stdD, \
-          "process_duration_q1":q1, "process_duration_q2":q2, "process_duration_q3":q3, "process_duration_ci95":marginError}]
+          "process_duration_q1":q1, "process_duration_q2":q2, "process_duration_q3":q3, "process_duration_me":marginError, "process_duration_ci095":CI}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 

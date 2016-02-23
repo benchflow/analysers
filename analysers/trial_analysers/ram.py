@@ -29,9 +29,26 @@ sc = CassandraSparkContext(conf=conf)
 
 def f(r):
     if r['memory_usage'] == None:
-        return (0, 0)
+        return (0, 1)
     else:
-        return (r['memory_usage'], 0)
+        return (r['memory_usage'], 1)
+
+data = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("memory_usage") \
+        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .map(f) \
+        .reduceByKey(lambda a, b: a + b) \
+        .map(lambda x: (x[1], x[0])) \
+        .sortByKey(0, 1) \
+        .collect()
+    
+mode = list()
+highestCount = data[0][0]        
+for d in data:
+    if d[0] == highestCount:
+        mode.append(d[1])
+    else:
+        break
 
 data = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("memory_usage") \
@@ -41,7 +58,7 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .map(lambda x: x[0]) \
         .collect()
  
-mode = data[0]
+#mode = data[0]
 dataMin = data[-1]
 dataMax = data[0]
 
@@ -77,13 +94,14 @@ stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
+CI = [CILow, CIHigh]
+
+dataIntegral = sum(integrate.cumtrapz(data))[0]
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "ram_mode":mode, "ram_median":median, \
-          "ram_mean":mean, "ram_avg":mean, \
+          "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_weight":dataLength, \
           "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
-          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_ci95":marginError}]
+          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_me":marginError, "ram_ci095":CI}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
-
-print(data[0])
