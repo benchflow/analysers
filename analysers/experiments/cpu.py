@@ -63,6 +63,18 @@ modeMax = CassandraRDD.select("cpu_mode") \
     .sortByKey(0, 1) \
     .map(lambda x: x[0]) \
     .first()
+    
+weightSum = CassandraRDD.select("cpu_weight") \
+    .where("experiment_id=?", experimentID) \
+    .map(lambda x: x["cpu_weight"]) \
+    .reduce(lambda a, b: a+b)
+    
+weightedSum = CassandraRDD.select("cpu_weight", "cpu_mean") \
+    .where("experiment_id=?", experimentID) \
+    .map(lambda x: x["cpu_mean"]*x["cpu_weight"]) \
+    .reduce(lambda a, b: a+b)
+    
+weightedMean = weightedSum/weightSum
 
 
 # TODO: Fix this
