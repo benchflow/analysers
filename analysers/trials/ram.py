@@ -5,6 +5,10 @@ import gzip
 import uuid
 import math
 
+import scipy.integrate as integrate
+import scipy.special as special
+import numpy as np
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
@@ -16,7 +20,7 @@ trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "environment_data"
-destTable = "exp_ram"
+destTable = "trial_ram"
 
 # Set configuration for spark context
 conf = SparkConf() \
@@ -33,11 +37,13 @@ def f(r):
     else:
         return (r['memory_usage'], 1)
 
-data = sc.cassandraTable(cassandraKeyspace, srcTable) \
+dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("memory_usage") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
         .map(f) \
-        .reduceByKey(lambda a, b: a + b) \
+        .cache()
+
+data = dataRDD.reduceByKey(lambda a, b: a + b) \
         .map(lambda x: (x[1], x[0])) \
         .sortByKey(0, 1) \
         .collect()
@@ -50,11 +56,7 @@ for d in data:
     else:
         break
 
-data = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("memory_usage") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .map(f) \
-        .sortByKey(0, 1) \
+data = dataRDD.sortByKey(0, 1) \
         .map(lambda x: x[0]) \
         .collect()
  
@@ -62,46 +64,55 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable) \
 dataMin = data[-1]
 dataMax = data[0]
 
-def computeMedian(d):
-    leng = len(d)
-    if leng %2 == 1:
-        medianIndex = ((leng+1)/2)-1
-        return (d[medianIndex], medianIndex, "odd")
-    else:
-        medianIndex = len(d)/2
-        lower = d[leng/2-1]
-        upper = d[leng/2]
-        return ((float(lower + upper)) / 2.0, medianIndex, "even")
+#def computeMedian(d):
+#    leng = len(d)
+#    if leng %2 == 1:
+#        medianIndex = ((leng+1)/2)-1
+#        return (d[medianIndex], medianIndex, "odd")
+#    else:
+#        medianIndex = len(d)/2
+#        lower = d[leng/2-1]
+#        upper = d[leng/2]
+#        return ((float(lower + upper)) / 2.0, medianIndex, "even")
 
 dataLength = len(data)
-m = computeMedian(data)
-median = m[0]
-if m[2] == "odd":
-    q3 = computeMedian(data[0:m[1]])[0]
-else:
-    q3 = computeMedian(data[0:m[1]-1])[0]
-q2 = m[0]
-if m[2] == "even":
-    q1 = computeMedian(data[m[1]:])[0]
-else:
-    q1 = computeMedian(data[m[1]+1:])[0]
+#m = computeMedian(data)
+#median = m[0]
+#if m[2] == "odd":
+#    q3 = computeMedian(data[0:m[1]])[0]
+#else:
+#    q3 = computeMedian(data[0:m[1]-1])[0]
+#q2 = m[0]
+#if m[2] == "even":
+#    q1 = computeMedian(data[m[1]:])[0]
+#else:
+#    q1 = computeMedian(data[m[1]+1:])[0]
+median = np.percentile(data, 50)
+q1 = np.percentile(data, 25)
+q2 = median
+q3 = np.percentile(data, 75)
+p95 = np.percentile(data, 95)
       
-mean = reduce(lambda x, y: x + y, data) / float(dataLength)
-variance = map(lambda x: (x - mean)**2, data)
-stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
+#mean = reduce(lambda x, y: x + y, data) / float(dataLength)
+mean = np.mean(data)
+#variance = map(lambda x: (x - mean)**2, data)
+variance = np.var(data)
+#stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
+stdD = np.std(data)
 
 stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
-CI = [CILow, CIHigh]
 
 dataIntegral = sum(integrate.cumtrapz(data))[0]
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "ram_mode":mode, "ram_median":median, \
-          "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_weight":dataLength, \
+          "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_num_data_points":dataLength, \
           "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
-          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_me":marginError, "ram_ci095":CI}]
+          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_p95":p95, "ram_me":marginError, "ram_ci095_min":CILow, "ram_ci095_max":CIHigh}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
+
+print(data[0])

@@ -5,8 +5,7 @@ import gzip
 import uuid
 import math
 
-import scipy.integrate as integrate
-import scipy.special as special
+import numpy as np
 
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
@@ -19,7 +18,7 @@ trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "process"
-destTable = "exp_process_duration"
+destTable = "trial_process_duration"
 
 # Set configuration for spark context
 conf = SparkConf() \
@@ -35,12 +34,14 @@ def f(r):
         return (0, 1)
     else:
         return (r['duration'], 1)
-    
-data = sc.cassandraTable(cassandraKeyspace, srcTable) \
+
+dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("duration") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
         .map(f) \
-        .reduceByKey(lambda a, b: a + b) \
+        .cache()
+
+data = dataRDD.reduceByKey(lambda a, b: a + b) \
         .map(lambda x: (x[1], x[0])) \
         .sortByKey(0, 1) \
         .collect()
@@ -53,59 +54,61 @@ for d in data:
     else:
         break
 
-data = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("duration") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .map(f) \
-        .sortByKey(0, 1) \
+data = dataRDD.sortByKey(0, 1) \
         .map(lambda x: x[0]) \
         .collect()
  
-mode = data[0]
+#mode = data[0]
 dataMin = data[-1]
 dataMax = data[0]
 
-def computeMedian(d):
-    leng = len(d)
-    if leng %2 == 1:
-        medianIndex = ((leng+1)/2)-1
-        return (d[medianIndex], medianIndex, "odd")
-    else:
-        medianIndex = len(d)/2
-        lower = d[leng/2-1]
-        upper = d[leng/2]
-        return ((float(lower + upper)) / 2.0, medianIndex, "even")
+#def computeMedian(d):
+#    leng = len(d)
+#    if leng %2 == 1:
+#        medianIndex = ((leng+1)/2)-1
+#        return (d[medianIndex], medianIndex, "odd")
+#    else:
+#        medianIndex = len(d)/2
+#        lower = d[leng/2-1]
+#        upper = d[leng/2]
+#        return ((float(lower + upper)) / 2.0, medianIndex, "even")
 
 dataLength = len(data)
-m = computeMedian(data)
-median = m[0]
-if m[2] == "odd":
-    q3 = computeMedian(data[0:m[1]])[0]
-else:
-    q3 = computeMedian(data[0:m[1]-1])[0]
-q2 = m[0]
-if m[2] == "even":
-    q1 = computeMedian(data[m[1]:])[0]
-else:
-    q1 = computeMedian(data[m[1]+1:])[0]
+#m = computeMedian(data)
+#median = m[0]
+#if m[2] == "odd":
+#    q3 = computeMedian(data[0:m[1]])[0]
+#else:
+#    q3 = computeMedian(data[0:m[1]-1])[0]
+#q2 = m[0]
+#if m[2] == "even":
+#    q1 = computeMedian(data[m[1]:])[0]
+#else:
+#    q1 = computeMedian(data[m[1]+1:])[0]
+median = np.percentile(data, 50)
+q1 = np.percentile(data, 25)
+q2 = median
+q3 = np.percentile(data, 75)
+p95 = np.percentile(data, 95)
       
-mean = reduce(lambda x, y: x + y, data) / float(dataLength)
-variance = map(lambda x: (x - mean)**2, data)
-stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
+#mean = reduce(lambda x, y: x + y, data) / float(dataLength)
+mean = np.mean(data)
+#variance = map(lambda x: (x - mean)**2, data)
+variance = np.var(data)
+#stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
+stdD = np.std(data)
 
 stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
-CI = [CILow, CIHigh]
-
-dataIntegral = sum(integrate.cumtrapz(data))[0]
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "process_duration_mode":mode, "process_duration_median":median, \
-          "process_duration_mean":mean, "process_duration_avg":mean, "process_duration_integral":dataIntegral, "process_duration_weight":dataLength, \
+          "process_duration_mean":mean, "process_duration_avg":mean, "process_duration_num_data_points":dataLength, \
           "process_duration_min":dataMin, "process_duration_max":dataMax, "process_duration_sd":stdD, \
-          "process_duration_q1":q1, "process_duration_q2":q2, "process_duration_q3":q3, "process_duration_me":marginError, "process_duration_ci095":CI}]
+          "process_duration_q1":q1, "process_duration_q2":q2, "process_duration_q3":q3, "process_duration_p95":p95, \
+          "process_duration_me":marginError, "process_duration_ci095_min":CILow, "process_duration_ci095_max":CIHigh}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 

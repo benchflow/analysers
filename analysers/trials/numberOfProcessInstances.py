@@ -14,7 +14,7 @@ trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "process"
-destTable = "exp_number_of_process_instances"
+destTable = "trial_number_of_process_instances"
 
 # Set configuration for spark context
 conf = SparkConf() \

@@ -20,9 +20,9 @@ trialID = sys.argv[3]
 minioHost = sys.argv[4]
 filePath = sys.argv[5]
 experimentID = trialID.split("_")[0]
-cassandraKeyspace = "benchflow"
-table = "environment_data"
 minioPort = "9000"
+cassandraKeyspace = "benchflow"
+destTable = "trial_byte_size"
 
 # Set configuration for spark context
 conf = SparkConf() \
