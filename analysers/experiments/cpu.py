@@ -64,23 +64,22 @@ modeMax = CassandraRDD.select("cpu_mode") \
     .map(lambda x: x[0]) \
     .first()
     
-weightSum = CassandraRDD.select("cpu_weight") \
+weightSum = CassandraRDD.select("cpu_num_data_points") \
     .where("experiment_id=?", experimentID) \
-    .map(lambda x: x["cpu_weight"]) \
+    .map(lambda x: x["cpu_num_data_points"]) \
     .reduce(lambda a, b: a+b)
     
-weightedSum = CassandraRDD.select("cpu_weight", "cpu_mean") \
+weightedSum = CassandraRDD.select("cpu_num_data_points", "cpu_mean") \
     .where("experiment_id=?", experimentID) \
-    .map(lambda x: x["cpu_mean"]*x["cpu_weight"]) \
+    .map(lambda x: x["cpu_mean"]*x["cpu_num_data_points"]) \
     .reduce(lambda a, b: a+b)
     
 weightedMean = weightedSum/weightSum
 
-
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "cpu_mode":[modeMin, modeMax], "cpu_median":[medianMin, medianMax], \
-          "cpu_mean":[medianMin, medianMax], "cpu_min":dataMin, "cpu_max":dataMax, "cpu_q1":[q1Min, q1Max], "cpu_q2":[q2Min, q2Max], \
-          "cpu_q3":[q3Min, q3Max]}]
+query = [{"experiment_id":experimentID, "cpu_mode_min":modeMin, "cpu_mode_max":modeMax, "cpu_median_min":medianMin, "cpu_median_max":medianMax, \
+          "cpu_mean_min":medianMin, "cpu_mean_max":medianMax, "cpu_min":dataMin, "cpu_max":dataMax, "cpu_q1_min":q1Min, "cpu_q1_max":q1Max, \
+          "cpu_q2_min":q2Min, "cpu_q2_max":q2Max, "cpu_q3_min":q3Min, "cpu_q3_max":q3Max}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
