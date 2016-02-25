@@ -17,7 +17,7 @@ trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "process"
-destTable = "exp_throughput"
+destTable = "trial_throughput"
 
 # Set configuration for spark context
 conf = SparkConf() \
@@ -62,6 +62,6 @@ tp = len(data)/delta
 print(tp)
 
 # TODO: Fix this
-query = [{"experiment_id":trialID, "throughput":tp}]
+query = [{"experiment_id":experimentID, "trial_id":trialID, "throughput":tp, "execution_time":delta}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)

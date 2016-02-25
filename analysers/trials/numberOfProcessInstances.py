@@ -14,7 +14,7 @@ trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "process"
-destTable = "exp_number_of_process_instances"
+destTable = "trial_number_of_process_instances"
 
 # Set configuration for spark context
 conf = SparkConf() \
@@ -29,7 +29,7 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .map(lambda r: 1) \
         .reduce(lambda a, b: a+b)
 
-query = [{"experiment_id":trialID, "number_of_process_instances":data}]
+query = [{"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":data}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
