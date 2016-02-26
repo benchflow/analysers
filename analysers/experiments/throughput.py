@@ -19,12 +19,12 @@ cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
-srcTable = "environment_data"
-destTable = "trial_ram"
+srcTable = "trial_throughput"
+destTable = "exp_throughput"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("Ram analyser") \
+    .setAppName("Throughput analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
@@ -32,14 +32,14 @@ sc = CassandraSparkContext(conf=conf)
 # TODO: Use Spark for all computations
 
 def f(r):
-    if r['memory_usage'] == None:
+    if r['throughput'] == None:
         return (0, 1)
     else:
-        return (r['memory_usage'], 1)
+        return (r['throughput'], 1)
 
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("memory_usage") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .select("throughput") \
+        .where("experiment_id=?", experimentID) \
         .map(f) \
         .cache()
 
@@ -105,13 +105,12 @@ marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
 
-dataIntegral = sum(integrate.cumtrapz(data))[0].item()
-
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "ram_mode":mode, "ram_median":median, \
-          "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_num_data_points":dataLength, \
-          "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
-          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_p95":p95, "ram_me":marginError, "ram_ci095_min":CILow, "ram_ci095_max":CIHigh}]
+query = [{"experiment_id":experimentID, "throughput_mode":mode, "throughput_median":median, \
+          "throughput_avg":mean, "throughput_num_data_points":dataLength, \
+          "throughput_min":dataMin, "throughput_max":dataMax, "throughput_sd":stdD, \
+          "throughput_q1":q1, "throughput_q2":q2, "throughput_q3":q3, "throughput_p95":p95, \
+          "throughput_me":marginError, "throughput_ci095_min":CILow, "throughput_ci095_max":CIHigh}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 

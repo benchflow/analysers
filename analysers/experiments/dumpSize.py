@@ -19,12 +19,12 @@ cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
-srcTable = "environment_data"
-destTable = "trial_ram"
+srcTable = "trial_size"
+destTable = "exp_size"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("Ram analyser") \
+    .setAppName("Size analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
@@ -32,14 +32,14 @@ sc = CassandraSparkContext(conf=conf)
 # TODO: Use Spark for all computations
 
 def f(r):
-    if r['memory_usage'] == None:
+    if r['size'] == None:
         return (0, 1)
     else:
-        return (r['memory_usage'], 1)
+        return (r['size'], 1)
 
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("memory_usage") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .select("size") \
+        .where("experiment_id=?", experimentID) \
         .map(f) \
         .cache()
 
@@ -105,13 +105,12 @@ marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
 
-dataIntegral = sum(integrate.cumtrapz(data))[0].item()
-
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "ram_mode":mode, "ram_median":median, \
-          "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_num_data_points":dataLength, \
-          "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
-          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_p95":p95, "ram_me":marginError, "ram_ci095_min":CILow, "ram_ci095_max":CIHigh}]
+query = [{"experiment_id":experimentID, "size_mode":mode, "size_median":median, \
+          "size_avg":mean, "size_num_data_points":dataLength, \
+          "size_min":dataMin, "size_max":dataMax, "size_sd":stdD, \
+          "size_q1":q1, "size_q2":q2, "size_q3":q3, "size_p95":p95, \
+          "size_me":marginError, "size_ci095_min":CILow, "size_ci095_max":CIHigh}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
