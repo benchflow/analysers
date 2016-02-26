@@ -85,18 +85,19 @@ dataLength = len(data)
 #    q1 = computeMedian(data[m[1]:])[0]
 #else:
 #    q1 = computeMedian(data[m[1]+1:])[0]
-median = np.percentile(data, 50)
-q1 = np.percentile(data, 25)
+    
+median = np.percentile(data, 50).item()
+q1 = np.percentile(data, 25).item()
 q2 = median
-q3 = np.percentile(data, 75)
-p95 = np.percentile(data, 95)
-      
+q3 = np.percentile(data, 75).item()
+p95 = np.percentile(data, 95).item()
+
 #mean = reduce(lambda x, y: x + y, data) / float(dataLength)
-mean = np.mean(data)
+mean = np.mean(data).item()
 #variance = map(lambda x: (x - mean)**2, data)
-variance = np.var(data)
+variance = np.var(data).item()
 #stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
-stdD = np.std(data)
+stdD = np.std(data).item()
 
 stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2

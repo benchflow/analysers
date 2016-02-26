@@ -15,12 +15,12 @@ cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
-srcTable = "trial_cpu"
-destTable = "exp_cpu"
+srcTable = "trial_ram"
+destTable = "exp_ram"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("Cpu analyser") \
+    .setAppName("Ram analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
@@ -39,56 +39,56 @@ def sortAndGet(field, asc):
         .first()
     return v
 
-dataMin = sortAndGet("cpu_min", 1)
-dataMax = sortAndGet("cpu_max", 0)
-q1Min = sortAndGet("cpu_q1", 1)
-q1Max = sortAndGet("cpu_q1", 0)
-q2Min = sortAndGet("cpu_q2", 1)
-q2Max = sortAndGet("cpu_q2", 0)
-q3Min = sortAndGet("cpu_q3", 1)
-q3Max = sortAndGet("cpu_q3", 0)
-p95Min = sortAndGet("cpu_p95", 1)
-p95Max = sortAndGet("cpu_p95", 0)
-medianMin = sortAndGet("cpu_median", 1)
-medianMax = sortAndGet("cpu_median", 0)
+dataMin = sortAndGet("ram_min", 1)
+dataMax = sortAndGet("ram_max", 0)
+q1Min = sortAndGet("ram_q1", 1)
+q1Max = sortAndGet("ram_q1", 0)
+q2Min = sortAndGet("ram_q2", 1)
+q2Max = sortAndGet("ram_q2", 0)
+q3Min = sortAndGet("ram_q3", 1)
+q3Max = sortAndGet("ram_q3", 0)
+p95Min = sortAndGet("ram_p95", 1)
+p95Max = sortAndGet("ram_p95", 0)
+medianMin = sortAndGet("ram_median", 1)
+medianMax = sortAndGet("ram_median", 0)
 
-modeMin = CassandraRDD.select("cpu_mode") \
+modeMin = CassandraRDD.select("ram_mode") \
     .where("experiment_id=?", experimentID) \
-    .map(lambda x: (min(x["cpu_mode"]), 0)) \
+    .map(lambda x: (min(x["ram_mode"]), 0)) \
     .sortByKey(1, 1) \
     .map(lambda x: x[0]) \
     .first()
     
-modeMax = CassandraRDD.select("cpu_mode") \
+modeMax = CassandraRDD.select("ram_mode") \
     .where("experiment_id=?", experimentID) \
-    .map(lambda x: (max(x["cpu_mode"]), 0)) \
+    .map(lambda x: (max(x["ram_mode"]), 0)) \
     .sortByKey(0, 1) \
     .map(lambda x: x[0]) \
     .first()
     
-weightSum = CassandraRDD.select("cpu_num_data_points") \
+weightSum = CassandraRDD.select("ram_num_data_points") \
     .where("experiment_id=?", experimentID) \
-    .map(lambda x: x["cpu_num_data_points"]) \
+    .map(lambda x: x["ram_num_data_points"]) \
     .reduce(lambda a, b: a+b)
     
-weightedSum = CassandraRDD.select("cpu_num_data_points", "cpu_mean") \
+weightedSum = CassandraRDD.select("ram_num_data_points", "ram_mean") \
     .where("experiment_id=?", experimentID) \
-    .map(lambda x: x["cpu_mean"]*x["cpu_num_data_points"]) \
+    .map(lambda x: x["ram_mean"]*x["ram_num_data_points"]) \
     .reduce(lambda a, b: a+b)
 
 weightedMean = weightedSum/weightSum
 
-meanMin = sortAndGet("cpu_mean", 1)
-bestTrials = CassandraRDD.select("trial_id", "cpu_mean") \
+meanMin = sortAndGet("ram_mean", 1)
+bestTrials = CassandraRDD.select("trial_id", "ram_mean") \
     .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["cpu_mean"] == meanMin) \
+    .filter(lambda x: x["ram_mean"] == meanMin) \
     .map(lambda x: x["trial_id"]) \
     .collect()
     
-meanMax = sortAndGet("cpu_mean", 0)
-worstTrials = CassandraRDD.select("trial_id", "cpu_mean") \
+meanMax = sortAndGet("ram_mean", 0)
+worstTrials = CassandraRDD.select("trial_id", "ram_mean") \
     .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["cpu_mean"] == meanMax) \
+    .filter(lambda x: x["ram_mean"] == meanMax) \
     .map(lambda x: x["trial_id"]) \
     .collect()
     
@@ -98,13 +98,13 @@ averageTrials = CassandraRDD.select("trial_id") \
     .collect()
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "cpu_mode_min":modeMin, "cpu_mode_max":modeMax, \
-          "cpu_median_min":medianMin, "cpu_median_max":medianMax, \
-          "cpu_mean_min":medianMin, "cpu_mean_max":medianMax, \
-          "cpu_min":dataMin, "cpu_max":dataMax, "cpu_q1_min":q1Min, \
-          "cpu_q1_max":q1Max, "cpu_q2_min":q2Min, "cpu_q2_max":q2Max, \
-          "cpu_p95_max":p95Max, "cpu_p95_min":p95Min, \
-          "cpu_q3_min":q3Min, "cpu_q3_max":q3Max, "cpu_weighted_avg":weightedMean, \
-          "cpu_best": bestTrials, "cpu_worst": worstTrials, "cpu_average": averageTrials}]
+query = [{"experiment_id":experimentID, "ram_mode_min":modeMin, "ram_mode_max":modeMax, \
+          "ram_median_min":medianMin, "ram_median_max":medianMax, \
+          "ram_mean_min":medianMin, "ram_mean_max":medianMax, \
+          "ram_min":dataMin, "ram_max":dataMax, "ram_q1_min":q1Min, \
+          "ram_q1_max":q1Max, "ram_q2_min":q2Min, "ram_q2_max":q2Max, \
+          "ram_p95_max":p95Max, "ram_p95_min":p95Min, \
+          "ram_q3_min":q3Min, "ram_q3_max":q3Max, "ram_weighted_avg":weightedMean, \
+          "ram_best": bestTrials, "ram_worst": worstTrials, "ram_average": averageTrials}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
