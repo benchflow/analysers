@@ -95,6 +95,7 @@ worstTrials = CassandraRDD.select("trial_id", "cpu_mean") \
 averageTrials = CassandraRDD.select("trial_id") \
     .where("experiment_id=?", experimentID) \
     .filter(lambda x: x["trial_id"] not in bestTrials and x["trial_id"] not in worstTrials) \
+    .map(lambda x: x["trial_id"]) \
     .collect()
 
 # TODO: Fix this
