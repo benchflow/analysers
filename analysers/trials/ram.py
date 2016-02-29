@@ -105,7 +105,7 @@ marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
 
-dataIntegral = sum(integrate.cumtrapz(data))[0].item()
+dataIntegral = sum(integrate.cumtrapz(data)).item()
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "ram_mode":mode, "ram_median":median, \
