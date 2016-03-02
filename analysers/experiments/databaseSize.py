@@ -19,12 +19,12 @@ cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
-srcTable = "trial_size"
-destTable = "exp_size"
+srcTable = "trial_byte_size"
+destTable = "exp_byte_size"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("Size analyser") \
+    .setAppName("Database size analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
