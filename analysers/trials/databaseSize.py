@@ -28,7 +28,7 @@ data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
         .reduce(lambda a, b: a["size"]+b["size"])
 
-query = [{"experiment_id":experimentID, "trial_id":trialID, "size":data}]
+query = [{"experiment_id":experimentID, "trial_id":trialID, "size":data["size"]}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
