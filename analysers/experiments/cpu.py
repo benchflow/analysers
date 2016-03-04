@@ -100,7 +100,7 @@ averageTrials = CassandraRDD.select("trial_id") \
     .collect()
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "cpu_mode_min":modeMin, "cpu_mode_max":modeMax, \
+query = [{"experiment_id":experimentID, "container_id":containerID, "cpu_mode_min":modeMin, "cpu_mode_max":modeMax, \
           "cpu_median_min":medianMin, "cpu_median_max":medianMax, \
           "cpu_mean_min":medianMin, "cpu_mean_max":medianMax, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_q1_min":q1Min, \
