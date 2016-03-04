@@ -17,6 +17,7 @@ from pyspark import SparkConf
 sparkMaster = sys.argv[1]
 cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
+containerID = sys.argv[4]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "environment_data"
@@ -39,7 +40,7 @@ def f(r):
 
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_percent_usage") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
         .map(f) \
         .cache()
 
@@ -94,11 +95,11 @@ q3 = np.percentile(data, 75).item()
 p95 = np.percentile(data, 95).item()
       
 #mean = reduce(lambda x, y: x + y, data) / float(dataLength)
-mean = np.mean(data).item()
+mean = np.mean(data, dtype=np.float64).item()
 #variance = map(lambda x: (x - mean)**2, data)
-variance = np.var(data).item()
+variance = np.var(data, dtype=np.float64).item()
 #stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
-stdD = np.std(data).item()
+stdD = np.std(data, dtype=np.float64).item()
 
 stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
@@ -108,7 +109,7 @@ CIHigh = mean + marginError
 dataIntegral = sum(integrate.cumtrapz(data)).item()
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "cpu_mode":mode, "cpu_median":median, \
+query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_mode":mode, "cpu_median":median, \
           "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
           "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]

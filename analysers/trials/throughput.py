@@ -58,7 +58,7 @@ delta = largest - smallest
 delta = delta.total_seconds()
 print(delta)
 
-tp = len(data)/delta
+tp = len(data)/float(delta)
 print(tp)
 
 # TODO: Fix this
