@@ -17,6 +17,7 @@ from pyspark import SparkConf
 sparkMaster = sys.argv[1]
 cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
+containerID = sys.argv[4]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "trial_io"
