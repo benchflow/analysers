@@ -31,25 +31,6 @@ conf = SparkConf() \
 sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
-
-def f1(r):
-    if r['reads'] == None:
-        return (0, 1)
-    else:
-        return (r['reads'], 1)
-    
-def f2(r):
-    if r['writes'] == None:
-        return (0, 1)
-    else:
-        return (r['writes'], 1)
-
-def f3(r):
-    if r['total'] == None:
-        return (0, 1)
-    else:
-        return (r['total'], 1)
-    
 data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .select("device") \
         .where("experiment_id=? AND container_id=?", experimentID, containerID) \
@@ -62,11 +43,18 @@ for e in data:
     
 queries = []
 
-def computeMetrics(op, dev, f):
+def computeMetrics(op, dev):
+    
+    def f(r):
+        if r[op] == None:
+            return (0, 1)
+        else:
+            return (r[op], 1)
+    
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("device", op) \
             .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-            .filter(lambda a: a["device"] == d) \
+            .filter(lambda a: a["device"] == dev) \
             .map(f) \
             .cache()
     
@@ -143,9 +131,9 @@ def computeMetrics(op, dev, f):
         
 for k in devices.keys():
     query = {}
-    query.update(computeMetrics("reads", k, f1))
-    query.update(computeMetrics("writes", k, f2))
-    query.update(computeMetrics("total", k, f3))
+    query.update(computeMetrics("reads", k))
+    query.update(computeMetrics("writes", k))
+    query.update(computeMetrics("total", k))
     queries.append(query)
 
 sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable)
