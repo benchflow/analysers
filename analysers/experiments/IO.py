@@ -51,7 +51,7 @@ def f3(r):
     
 data = sc.cassandraTable(cassandraKeyspace, srcTable)\
         .select("device") \
-        .where("experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
         .collect()
 
 devices = {}
@@ -61,7 +61,7 @@ for e in data:
     
 queries = []
 
-def computeMetrics(op, dev):
+def computeMetrics(op, dev, f):
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("device", op) \
             .where("experiment_id=? AND container_id=?", experimentID, containerID) \
@@ -120,11 +120,11 @@ def computeMetrics(op, dev):
     p95 = np.percentile(data, 95).item()
           
     #mean = reduce(lambda x, y: x + y, data) / float(dataLength)
-    mean = np.mean(data).item()
+    mean = np.mean(data, dtype=np.float64).item()
     #variance = map(lambda x: (x - mean)**2, data)
-    variance = np.var(data).item()
+    variance = np.var(data, dtype=np.float64).item()
     #stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
-    stdD = np.std(data).item()
+    stdD = np.std(data, dtype=np.float64).item()
     
     stdE = stdD/float(math.sqrt(dataLength))
     marginError = stdE * 2
@@ -142,9 +142,9 @@ def computeMetrics(op, dev):
         
 for k in devices.keys():
     query = {}
-    query.update(computeMetrics("reads", k))
-    query.update(computeMetrics("writes", k))
-    query.update(computeMetrics("total", k))
+    query.update(computeMetrics("reads", k, f1))
+    query.update(computeMetrics("writes", k, f2))
+    query.update(computeMetrics("total", k, f3))
     queries.append(query)
 
 sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable)

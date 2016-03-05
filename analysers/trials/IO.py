@@ -19,7 +19,7 @@ destTable = "trial_IO"
 
 # Set configuration for spark context
 conf = SparkConf() \
-    .setAppName("I/O analyser") \
+    .setAppName("IO analyser") \
     .setMaster(sparkMaster) \
     .set("spark.cassandra.connection.host", cassandraHost)
 sc = CassandraSparkContext(conf=conf)
