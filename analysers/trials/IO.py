@@ -15,7 +15,7 @@ containerID = sys.argv[4]
 experimentID = trialID.split("_")[0]
 cassandraKeyspace = "benchflow"
 srcTable = "io_data"
-destTable = "trial_IO"
+destTable = "trial_io"
 
 # Set configuration for spark context
 conf = SparkConf() \
