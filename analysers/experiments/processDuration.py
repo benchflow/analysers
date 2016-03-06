@@ -79,22 +79,60 @@ weightedSum = CassandraRDD.select("process_duration_num_data_points", "process_d
 weightedMean = weightedSum/weightSum
 
 meanMin = sortAndGet("process_duration_mean", 1)
-bestTrials = CassandraRDD.select("trial_id", "process_duration_mean") \
-    .where("experiment_id=?", experimentID) \
+meMin = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
     .filter(lambda x: x["process_duration_mean"] == meanMin) \
+    .map(lambda x: (x["process_duration_me"], 0)) \
+    .sortByKey(1, 1) \
+    .map(lambda x: x[0]) \
+    .first()
+bestTrials = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .filter(lambda x: x["process_duration_mean"] == meanMin and x["process_duration_me"] == meMin) \
     .map(lambda x: x["trial_id"]) \
     .collect()
-    
+
 meanMax = sortAndGet("process_duration_mean", 0)
-worstTrials = CassandraRDD.select("trial_id", "process_duration_mean") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["process_duration_mean"] == meanMax) \
+meMax = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .filter(lambda x: x["process_duration_mean"] == meanMin) \
+    .map(lambda x: (x["process_duration_me"], 0)) \
+    .sortByKey(0, 1) \
+    .map(lambda x: x[0]) \
+    .first()
+worstTrials = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .filter(lambda x: x["process_duration_mean"] == meanMax and x["process_duration_me"] == meMax) \
     .map(lambda x: x["trial_id"]) \
     .collect()
     
-averageTrials = CassandraRDD.select("trial_id") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["trial_id"] not in bestTrials and x["trial_id"] not in worstTrials) \
+meanAverage = CassandraRDD.select("trial_id", "process_duration_mean") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .map(lambda x: (x["process_duration_mean"], 1)) \
+    .reduce(lambda a, b: a+b)
+meanAverage = meanAverage[0]/meanAverage[1]
+meAverage = CassandraRDD.select("trial_id", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .map(lambda x: (x["process_duration_me"], 1)) \
+    .reduce(lambda a, b: a+b)
+meAverage = meAverage[0]/meAverage[1]
+averageTrialsUpperMean = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .map(lambda x: (x["process_duration_mean"], x["trial_id"])) \
+    .sortByKey(1, 1) \
+    .filter(lambda x: x[0] >= meanAverage) \
+    .map(lambda x: x[0]) \
+    .first()
+averageTrialsLowerMean = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .map(lambda x: (x["process_duration_mean"], x["trial_id"])) \
+    .sortByKey(0, 1) \
+    .filter(lambda x: x[0] <= meanAverage) \
+    .map(lambda x: x[0]) \
+    .first()
+averageTrials = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+    .filter(lambda x: x["process_duration_mean"] == averageTrialsUpperMean or x["process_duration_mean"] == averageTrialsLowerMean) \
     .map(lambda x: x["trial_id"]) \
     .collect()
 

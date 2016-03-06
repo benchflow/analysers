@@ -44,18 +44,18 @@ dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .map(f) \
         .cache()
 
-data = dataRDD.reduceByKey(lambda a, b: a + b) \
-        .map(lambda x: (x[1], x[0])) \
-        .sortByKey(0, 1) \
-        .collect()
-    
-mode = list()
-highestCount = data[0][0]        
-for d in data:
-    if d[0] == highestCount:
-        mode.append(d[1])
-    else:
-        break
+#data = dataRDD.reduceByKey(lambda a, b: a + b) \
+#        .map(lambda x: (x[1], x[0])) \
+#        .sortByKey(0, 1) \
+#        .collect()
+#    
+#mode = list()
+#highestCount = data[0][0]        
+#for d in data:
+#    if d[0] == highestCount:
+#        mode.append(d[1])
+#    else:
+#        break
 
 data = dataRDD.sortByKey(0, 1) \
         .map(lambda x: x[0]) \
@@ -109,7 +109,7 @@ CIHigh = mean + marginError
 dataIntegral = sum(integrate.cumtrapz(data)).item()
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_mode":mode, "cpu_median":median, \
+query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, \
           "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
           "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]
