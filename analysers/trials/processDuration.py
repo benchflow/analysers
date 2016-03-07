@@ -16,6 +16,7 @@ sparkMaster = sys.argv[1]
 cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
+nToIgnore = 5
 cassandraKeyspace = "benchflow"
 srcTable = "process"
 destTable = "trial_process_duration"
@@ -29,15 +30,35 @@ sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
 
+dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
+        .select("process_definition_id", "end_time", "start_time", "duration") \
+        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+        .filter(lambda r: r["process_definition_id"] is not None) \
+        .cache()
+
+processes = dataRDD.map(lambda r: r["process_definition_id"]) \
+        .distinct() \
+        .collect()
+
+maxTime = None
+for p in processes:
+    time = dataRDD.filter(lambda r: r["process_definition_id"] == p) \
+        .map(lambda r: (r["end_time"], 0)) \
+        .sortByKey(1, 1) \
+        .collect()
+    time = time[nToIgnore-1]
+    if maxTime is None or time[0] > maxTime:
+        maxTime = time[0]
+
+print(maxTime)
+
 def f(r):
     if r['duration'] == None:
         return (0, 1)
     else:
         return (r['duration'], 1)
 
-dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("duration") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+dataRDD = dataRDD.filter(lambda r: r["start_time"] > maxTime) \
         .map(f) \
         .cache()
 
