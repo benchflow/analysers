@@ -31,7 +31,7 @@ sc = CassandraSparkContext(conf=conf)
 # TODO: Use Spark for all computations
 
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
-        .select("process_definition_id", "end_time", "start_time", "duration") \
+        .select("process_definition_id", "source_process_instance_id", "end_time", "start_time", "duration") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
         .filter(lambda r: r["process_definition_id"] is not None) \
         .cache()
@@ -41,16 +41,31 @@ processes = dataRDD.map(lambda r: r["process_definition_id"]) \
         .collect()
 
 maxTime = None
+maxID = None
 for p in processes:
     time = dataRDD.filter(lambda r: r["process_definition_id"] == p) \
-        .map(lambda r: (r["start_time"], 0)) \
+        .map(lambda r: (r["start_time"], r["source_process_instance_id"])) \
         .sortByKey(1, 1) \
         .collect()
     time = time[nToIgnore-1]
     if maxTime is None or time[0] > maxTime:
         maxTime = time[0]
+        maxID = time[1]
 
 print(maxTime)
+
+data = dataRDD.map(lambda r: (r["start_time"], r)) \
+        .sortByKey(1, 1) \
+        .map(lambda r: r[1]) \
+        .collect()
+
+index = 0
+for i in range(len(data)):
+    if data[i]["source_process_instance_id"] == maxID:
+        index = i
+        break
+
+data = sc.parallelize(data[index:])
 
 def f(r):
     if r['duration'] == None:
@@ -58,8 +73,7 @@ def f(r):
     else:
         return (r['duration'], 1)
 
-dataRDD = dataRDD.filter(lambda r: r["start_time"] > maxTime) \
-        .map(f) \
+dataRDD = data.map(f) \
         .cache()
 
 data = dataRDD.reduceByKey(lambda a, b: a + b) \
