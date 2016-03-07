@@ -37,7 +37,7 @@ processes = dataRDD.map(lambda r: r["process_definition_id"]) \
 maxTime = None
 for p in processes:
     time = dataRDD.filter(lambda r: r["process_definition_id"] == p) \
-        .map(lambda r: (r["end_time"], 0)) \
+        .map(lambda r: (r["start_time"], 0)) \
         .sortByKey(1, 1) \
         .collect()
     time = time[nToIgnore-1]
