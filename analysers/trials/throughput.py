@@ -46,7 +46,10 @@ for p in processes:
         .map(lambda r: (r["start_time"], r["source_process_instance_id"])) \
         .sortByKey(1, 1) \
         .collect()
-    time = time[nToIgnore-1]
+    if len(time) < nToIgnore:
+        continue
+    else:
+        time = time[nToIgnore-1]
     if maxTime is None or time[0] > maxTime:
         maxTime = time[0]
         maxID = time[1]
@@ -58,13 +61,14 @@ data = dataRDD.map(lambda r: (r["start_time"], r)) \
         .map(lambda r: r[1]) \
         .collect()
 
-index = 0
-for i in range(len(data)):
-    if data[i]["source_process_instance_id"] == maxID:
-        index = i
-        break
-
-data = sc.parallelize(data[index:])
+index = -1
+if maxID is not None:
+    for i in range(len(data)):
+        if data[i]["source_process_instance_id"] == maxID:
+            index = i
+            break
+    
+data = sc.parallelize(data[index+1:])
 
 data = data.map(lambda r: (r['start_time'], r['end_time'])) \
         .collect()
