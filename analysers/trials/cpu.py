@@ -31,8 +31,31 @@ conf = SparkConf() \
 sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
+def computeMetrics(data):
+    dataMin = data[-1]
+    dataMax = data[0]
+    dataLength = len(data)
+    median = np.percentile(data, 50).item()
+    q1 = np.percentile(data, 25).item()
+    q2 = median
+    q3 = np.percentile(data, 75).item()
+    p95 = np.percentile(data, 95).item()
+    mean = np.mean(data, dtype=np.float64).item()
+    variance = np.var(data, dtype=np.float64).item()
+    stdD = np.std(data, dtype=np.float64).item()
+    stdE = stdD/float(math.sqrt(dataLength))
+    marginError = stdE * 2
+    CILow = mean - marginError
+    CIHigh = mean + marginError
+    dataIntegral = sum(integrate.cumtrapz(data)).item()
 
-def f(r):
+    # TODO: Fix this
+    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, \
+              "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
+              "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
+              "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]
+
+def f1(r):
     if r['cpu_percent_usage'] == None:
         return (0, 1)
     else:
@@ -41,79 +64,37 @@ def f(r):
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_percent_usage") \
         .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
-        .map(f) \
+        .map(f1) \
         .cache()
-
-#data = dataRDD.reduceByKey(lambda a, b: a + b) \
-#        .map(lambda x: (x[1], x[0])) \
-#        .sortByKey(0, 1) \
-#        .collect()
-#    
-#mode = list()
-#highestCount = data[0][0]        
-#for d in data:
-#    if d[0] == highestCount:
-#        mode.append(d[1])
-#    else:
-#        break
 
 data = dataRDD.sortByKey(0, 1) \
         .map(lambda x: x[0]) \
         .collect()
- 
-#mode = data[0]
-dataMin = data[-1]
-dataMax = data[0]
 
-#def computeMedian(d):
-#    leng = len(d)
-#    if leng %2 == 1:
-#        medianIndex = ((leng+1)/2)-1
-#        return (d[medianIndex], medianIndex, "odd")
-#    else:
-#        medianIndex = len(d)/2
-#        lower = d[leng/2-1]
-#        upper = d[leng/2]
-#        return ((float(lower + upper)) / 2.0, medianIndex, "even")
+query = computeMetrics(data)
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu")
 
-dataLength = len(data)
-#m = computeMedian(data)
-#median = m[0]
-#if m[2] == "odd":
-#    q3 = computeMedian(data[0:m[1]])[0]
-#else:
-#    q3 = computeMedian(data[0:m[1]-1])[0]
-#q2 = m[0]
-#if m[2] == "even":
-#    q1 = computeMedian(data[m[1]:])[0]
-#else:
-#    q1 = computeMedian(data[m[1]+1:])[0]
-median = np.percentile(data, 50).item()
-q1 = np.percentile(data, 25).item()
-q2 = median
-q3 = np.percentile(data, 75).item()
-p95 = np.percentile(data, 95).item()
-      
-#mean = reduce(lambda x, y: x + y, data) / float(dataLength)
-mean = np.mean(data, dtype=np.float64).item()
-#variance = map(lambda x: (x - mean)**2, data)
-variance = np.var(data, dtype=np.float64).item()
-#stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
-stdD = np.std(data, dtype=np.float64).item()
 
-stdE = stdD/float(math.sqrt(dataLength))
-marginError = stdE * 2
-CILow = mean - marginError
-CIHigh = mean + marginError
+def f2(r):
+    if r['cpu_percpu_percent_usage'] == None:
+        return (None, 1)
+    else:
+        return (r['cpu_percpu_percent_usage'], 1)
 
-dataIntegral = sum(integrate.cumtrapz(data)).item()
+dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("cpu_percpu_percent_usage") \
+        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+        .map(f2) \
+        .cache()
 
-# TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, \
-          "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
-          "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
-          "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]
+nOfCores = len((dataRDD.first())[0])
+for i in range(nOfCores):
+    data = dataRDD.filter(lambda r: r[0] is not None) \
+            .map(lambda r: (r[0][i], 1)) \
+            .sortByKey(0, 1) \
+            .map(lambda x: x[0]) \
+            .collect()
 
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
-
-print(data[0])
+    query = computeMetrics(data)
+    query[0]["core"] = i
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu_core")
