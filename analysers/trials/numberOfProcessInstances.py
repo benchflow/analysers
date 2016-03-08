@@ -47,7 +47,11 @@ for p in processes:
         time = time[nToIgnore-1]
     if maxTime is None or time[0] > maxTime:
         maxTime = time[0]
-        maxID = time[1]
+        defId = dataRDD.filter(lambda r: r["process_definition_id"] == p and r["start_time"] == maxTime) \
+            .map(lambda r: (r["source_process_instance_id"], 0)) \
+            .sortByKey(1, 1) \
+            .first()
+        maxID = defId[0]
 
 print(maxTime)
 
