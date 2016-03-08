@@ -15,6 +15,7 @@ sparkMaster = sys.argv[1]
 cassandraHost = sys.argv[2]
 trialID = sys.argv[3]
 experimentID = trialID.split("_")[0]
+nToIgnore = 5
 cassandraKeyspace = "benchflow"
 srcTable = "process"
 destTable = "trial_throughput"
@@ -28,10 +29,52 @@ sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
 
-data = sc.cassandraTable(cassandraKeyspace, srcTable)\
-        .select("start_time", "end_time") \
+dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
+        .select("process_definition_id", "source_process_instance_id", "end_time", "start_time") \
         .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .map(lambda r: (r['start_time'], r['end_time'])) \
+        .filter(lambda r: r["process_definition_id"] is not None) \
+        .cache()
+
+processes = dataRDD.map(lambda r: r["process_definition_id"]) \
+        .distinct() \
+        .collect()
+
+maxTime = None
+maxID = None
+for p in processes:
+    time = dataRDD.filter(lambda r: r["process_definition_id"] == p) \
+        .map(lambda r: (r["start_time"], r["source_process_instance_id"])) \
+        .sortByKey(1, 1) \
+        .collect()
+    if len(time) < nToIgnore:
+        continue
+    else:
+        time = time[nToIgnore-1]
+    if maxTime is None or time[0] > maxTime:
+        maxTime = time[0]
+        defId = dataRDD.filter(lambda r: r["process_definition_id"] == p and r["start_time"] == maxTime) \
+            .map(lambda r: (r["source_process_instance_id"], 0)) \
+            .sortByKey(1, 1) \
+            .first()
+        maxID = defId[0]
+
+print(maxTime)
+
+data = dataRDD.map(lambda r: (r["start_time"], r)) \
+        .sortByKey(1, 1) \
+        .map(lambda r: r[1]) \
+        .collect()
+
+index = -1
+if maxID is not None:
+    for i in range(len(data)):
+        if data[i]["source_process_instance_id"] == maxID:
+            index = i
+            break
+    
+data = sc.parallelize(data[index+1:])
+
+data = data.map(lambda r: (r['start_time'], r['end_time'])) \
         .collect()
 
 smallest = None
