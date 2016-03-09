@@ -47,7 +47,7 @@ def computeMetrics(op, dev):
     
     def f(r):
         if r[op] == None:
-            return (0, 1)
+            return (None, 1)
         else:
             return (r[op], 1)
     
@@ -57,6 +57,9 @@ def computeMetrics(op, dev):
             .filter(lambda a: a["device"] == dev) \
             .map(f) \
             .cache()
+            
+    if (dataRDD.first())[0] is None:
+        return {"experiment_id":experimentID, "container_id":containerID, "device":dev}
     
     data = dataRDD.reduceByKey(lambda a, b: a + b) \
             .map(lambda x: (x[1], x[0])) \

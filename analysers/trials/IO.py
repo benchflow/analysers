@@ -25,6 +25,8 @@ conf = SparkConf() \
 sc = CassandraSparkContext(conf=conf)
 
 def f(a, b):
+    if a is None or b is None:
+        return None
     if a>b:
         return a
     else:
