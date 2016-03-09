@@ -180,11 +180,11 @@ def sortAndGetCore(field, asc, i):
         .first()
     return v
 
-nOfCores = CassandraRDD.select("cpu_median") \
+nOfCores = CassandraRDD.select("cpu_cores") \
         .where("experiment_id=? AND container_id=?", experimentID, containerID) \
         .first()
 
-nOfCores = len(nOfCores["cpu_median"])
+nOfCores = nOfCores["cpu_cores"]
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "container_id":containerID, \

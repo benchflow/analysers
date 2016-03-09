@@ -74,6 +74,12 @@ data = dataRDD.sortByKey(0, 1) \
 query = computeMetrics(data)
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu")
 
+nOfCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("cpu_cores") \
+        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+        .first()
+        
+nOfCores = nOfCores["cpu_cores"]
 
 def f2(r):
     if r['cpu_percpu_percent_usage'] == None:
@@ -87,8 +93,6 @@ dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .map(f2) \
         .filter(lambda r: r[0] is not None) \
         .cache()
-
-nOfCores = len((dataRDD.first())[0])
 
 query = [{}]
 query[0]["experiment_id"] = experimentID
