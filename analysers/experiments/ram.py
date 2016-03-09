@@ -136,6 +136,29 @@ averageTrials = CassandraRDD.select("trial_id", "ram_mean", "ram_me") \
     .filter(lambda x: x["ram_mean"] == averageTrialsUpperMean or x["ram_mean"] == averageTrialsLowerMean) \
     .map(lambda x: x["trial_id"]) \
     .collect()
+    
+data = CassandraRDD.select("ram_integral") \
+        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+        .map(lambda x: (x["ram_integral"], 0)) \
+        .sortByKey(0, 1) \
+        .map(lambda x: x[0]) \
+        .collect()
+
+dataMin = data[-1]
+dataMax = data[0]
+dataLength = len(data)
+median = np.percentile(data, 50).item()
+q1 = np.percentile(data, 25).item()
+q2 = median
+q3 = np.percentile(data, 75).item()
+p95 = np.percentile(data, 95).item()
+mean = np.mean(data, dtype=np.float64).item()
+variance = np.var(data, dtype=np.float64).item()
+stdD = np.std(data, dtype=np.float64).item()
+stdE = stdD/float(math.sqrt(dataLength))
+marginError = stdE * 2
+CILow = mean - marginError
+CIHigh = mean + marginError
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "container_id":containerID, "ram_mode_min":modeMin, "ram_mode_max":modeMax, \
@@ -145,6 +168,10 @@ query = [{"experiment_id":experimentID, "container_id":containerID, "ram_mode_mi
           "ram_q1_max":q1Max, "ram_q2_min":q2Min, "ram_q2_max":q2Max, \
           "ram_p95_max":p95Max, "ram_p95_min":p95Min, \
           "ram_q3_min":q3Min, "ram_q3_max":q3Max, "ram_weighted_avg":weightedMean, \
-          "ram_best": bestTrials, "ram_worst": worstTrials, "ram_average": averageTrials}]
+          "ram_best": bestTrials, "ram_worst": worstTrials, "ram_average": averageTrials, \
+          "ram_integral_median":median, "ram_integral_mean":mean, "ram_integral_avg":mean, \
+          "ram_integral_min":dataMin, "ram_integral_max":dataMax, "ram_integral_sd":stdD, \
+          "ram_integral_q1":q1, "ram_integral_q2":q2, "ram_integral_q3":q3, "ram_integral_p95":p95, \
+          "ram_integral_me":marginError, "ram_integral_ci095_min":CILow, "ram_integral_ci095_max":CIHigh}]
 
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
