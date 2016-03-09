@@ -5,6 +5,10 @@ import gzip
 import uuid
 import math
 
+import scipy.integrate as integrate
+import scipy.special as special
+import numpy as np
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
