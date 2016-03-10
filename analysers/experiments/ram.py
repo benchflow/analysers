@@ -104,7 +104,7 @@ bestTrials = CassandraRDD.select("trial_id", "ram_mean", "ram_me") \
 meanMax = sortAndGet("ram_mean", 0)
 meMax = CassandraRDD.select("trial_id", "ram_mean", "ram_me") \
     .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .filter(lambda x: x["ram_mean"] == meanMin) \
+    .filter(lambda x: x["ram_mean"] == meanMax) \
     .map(lambda x: (x["ram_me"], 0)) \
     .sortByKey(0, 1) \
     .map(lambda x: x[0]) \
