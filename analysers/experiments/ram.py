@@ -37,7 +37,7 @@ CassandraRDD.cache()
 
 def sortAndGet(field, asc):
     v = CassandraRDD.select(field) \
-        .where("experiment_id=?", experimentID) \
+        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
         .map(lambda x: (x[field], 0)) \
         .sortByKey(asc, 1) \
         .map(lambda x: x[0]) \
@@ -57,19 +57,23 @@ p95Max = sortAndGet("ram_p95", 0)
 medianMin = sortAndGet("ram_median", 1)
 medianMax = sortAndGet("ram_median", 0)
 
-modeMin = CassandraRDD.select("ram_mode") \
+modeMinValues = CassandraRDD.select("ram_mode", "ram_mode_freq") \
     .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: (min(x["ram_mode"]), 0)) \
+    .map(lambda x: (min(x["ram_mode"]), x["ram_mode_freq"])) \
     .sortByKey(1, 1) \
-    .map(lambda x: x[0]) \
+    .map(lambda x: (x[0], x[1])) \
     .first()
-    
-modeMax = CassandraRDD.select("ram_mode") \
+modeMin = modeMinValues[0]
+modeMinFreq = modeMinValues[1]
+
+modeMaxValues = CassandraRDD.select("ram_mode", "ram_mode_freq") \
     .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: (max(x["ram_mode"]), 0)) \
+    .map(lambda x: (max(x["ram_mode"]), x["ram_mode_freq"])) \
     .sortByKey(0, 1) \
-    .map(lambda x: x[0]) \
+    .map(lambda x: (x[0], x[1])) \
     .first()
+modeMax = modeMaxValues[0]
+modeMaxFreq = modeMaxValues[1]
     
 weightSum = CassandraRDD.select("ram_num_data_points") \
     .where("experiment_id=? AND container_id=?", experimentID, containerID) \
@@ -166,6 +170,7 @@ CIHigh = mean + marginError
 
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "container_id":containerID, "ram_mode_min":modeMin, "ram_mode_max":modeMax, \
+          "ram_mode_min_freq":modeMinFreq, "ram_mode_max_freq":modeMaxFreq, \
           "ram_median_min":medianMin, "ram_median_max":medianMax, \
           "ram_mean_min":medianMin, "ram_mean_max":medianMax, \
           "ram_min":dataMin, "ram_max":dataMax, "ram_q1_min":q1Min, \
