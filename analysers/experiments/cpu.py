@@ -35,6 +35,12 @@ sc = CassandraSparkContext(conf=conf)
 CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_cpu")
 CassandraRDD.cache()
 
+nOfCores = CassandraRDD.select("cpu_cores") \
+        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+        .first()
+
+nOfCores = nOfCores["cpu_cores"]
+
 def sortAndGet(field, asc):
     v = CassandraRDD.select(field) \
         .where("experiment_id=? AND container_id=?", experimentID, containerID) \
@@ -151,7 +157,7 @@ CILow = mean - marginError
 CIHigh = mean + marginError
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "container_id":containerID, \
+query = [{"experiment_id":experimentID, "container_id":containerID, "cpu_cores":nOfCores, \
           "cpu_median_min":medianMin, "cpu_median_max":medianMax, \
           "cpu_mean_min":medianMin, "cpu_mean_max":medianMax, \
           "cpu_min":dataMin, "cpu_max":dataMax, "cpu_q1_min":q1Min, \
@@ -184,14 +190,8 @@ def sortAndGetCore(field, asc, i):
         .first()
     return v
 
-nOfCores = CassandraRDD.select("cpu_cores") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .first()
-
-nOfCores = nOfCores["cpu_cores"]
-
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "container_id":containerID, \
+query = [{"experiment_id":experimentID, "container_id":containerID, "cpu_cores":nOfCores, \
           "cpu_median_min":[None]*nOfCores, "cpu_median_max":[None]*nOfCores, \
           "cpu_mean_min":[None]*nOfCores, "cpu_mean_max":[None]*nOfCores, \
           "cpu_min":[None]*nOfCores, "cpu_max":[None]*nOfCores, "cpu_q1_min":[None]*nOfCores, \
