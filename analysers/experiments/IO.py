@@ -124,7 +124,7 @@ def computeMetrics(op, dev):
     CIHigh = mean + marginError
 
     # TODO: Fix this
-    query = {"experiment_id":experimentID, "container_id":containerID, "device":dev, op+"_mode":mode, op+"_median":median, \
+    query = {"experiment_id":experimentID, "container_id":containerID, "device":dev, op+"_mode":mode, op+"_mode_freq":highestCount, op+"_median":median, \
               op+"_avg":mean, \
               op+"_min":dataMin, op+"_max":dataMax, op+"_sd":stdD, \
               op+"_q1":q1, op+"_q2":q2, op+"_q3":q3, op+"_p95":p95, \

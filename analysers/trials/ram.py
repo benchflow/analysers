@@ -109,7 +109,7 @@ CIHigh = mean + marginError
 dataIntegral = sum(integrate.cumtrapz(data)).item()
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "ram_mode":mode, "ram_median":median, \
+query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "ram_mode":mode, "ram_mode_freq":highestCount, "ram_median":median, \
           "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_num_data_points":dataLength, \
           "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
           "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_p95":p95, "ram_me":marginError, "ram_ci095_min":CILow, "ram_ci095_max":CIHigh}]

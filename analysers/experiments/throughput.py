@@ -106,7 +106,7 @@ CILow = mean - marginError
 CIHigh = mean + marginError
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "throughput_mode":mode, "throughput_median":median, \
+query = [{"experiment_id":experimentID, "throughput_mode":mode, "throughput_mode_freq":highestCount, "throughput_median":median, \
           "throughput_avg":mean, "throughput_num_data_points":dataLength, \
           "throughput_min":dataMin, "throughput_max":dataMax, "throughput_sd":stdD, \
           "throughput_q1":q1, "throughput_q2":q2, "throughput_q3":q3, "throughput_p95":p95, \

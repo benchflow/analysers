@@ -106,7 +106,7 @@ CILow = mean - marginError
 CIHigh = mean + marginError
 
 # TODO: Fix this
-query = [{"experiment_id":experimentID, "number_of_process_instances_mode":mode, "number_of_process_instances_median":median, \
+query = [{"experiment_id":experimentID, "number_of_process_instances_mode":mode, "number_of_process_instances_mode_freq":highestCount, "number_of_process_instances_median":median, \
           "number_of_process_instances_avg":mean, "number_of_process_instances_num_data_points":dataLength, \
           "number_of_process_instances_min":dataMin, "number_of_process_instances_max":dataMax, "number_of_process_instances_sd":stdD, \
           "number_of_process_instances_q1":q1, "number_of_process_instances_q2":q2, "number_of_process_instances_q3":q3, "number_of_process_instances_p95":p95, \
