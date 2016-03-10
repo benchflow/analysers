@@ -50,7 +50,7 @@ def computeMetrics(data):
     dataIntegral = sum(integrate.cumtrapz(data)).item()
 
     # TODO: Fix this
-    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, \
+    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, "cpu_cores":nOfCores, \
               "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
               "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
               "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]
@@ -60,6 +60,13 @@ def f1(r):
         return (0, 1)
     else:
         return (r['cpu_percent_usage'], 1)
+
+nOfCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("cpu_cores") \
+        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+        .first()
+        
+nOfCores = nOfCores["cpu_cores"]
 
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_percent_usage") \
@@ -73,13 +80,6 @@ data = dataRDD.sortByKey(0, 1) \
 
 query = computeMetrics(data)
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu")
-
-nOfCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_cores") \
-        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
-        .first()
-        
-nOfCores = nOfCores["cpu_cores"]
 
 def f2(r):
     if r['cpu_percpu_percent_usage'] == None:
@@ -98,6 +98,7 @@ query = [{}]
 query[0]["experiment_id"] = experimentID
 query[0]["trial_id"] = trialID
 query[0]["container_id"] = containerID
+query[0]["cpu_cores"] = nOfCores
 query[0]["cpu_num_data_points"] = None
 query[0]["cpu_median"] = [None]*nOfCores
 query[0]["cpu_mean"] = [None]*nOfCores
@@ -137,5 +138,5 @@ for i in range(nOfCores):
     query[0]["cpu_ci095_min"][i] = met[0]["cpu_ci095_min"]
     query[0]["cpu_ci095_max"][i] = met[0]["cpu_ci095_max"]
 
-    
+   
 sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu_core")
