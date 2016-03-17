@@ -151,7 +151,7 @@ p95 = np.percentile(data, 95).item()
 mean = np.mean(data, dtype=np.float64).item()
 variance = np.var(data, dtype=np.float64).item()
 stdD = np.std(data, dtype=np.float64).item()
-stdE = stdD/float(math.sqrt(dataLength))
+stdE = stdD/float(math.sqrt(integralDataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
