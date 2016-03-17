@@ -152,8 +152,8 @@ data = CassandraRDD.select("ram_integral") \
         .map(lambda x: x[0]) \
         .collect()
 
-dataMin = data[-1]
-dataMax = data[0]
+integralDataMin = data[-1]
+integralDataMax = data[0]
 dataLength = len(data)
 median = np.percentile(data, 50).item()
 q1 = np.percentile(data, 25).item()
@@ -179,7 +179,7 @@ query = [{"experiment_id":experimentID, "container_id":containerID, "ram_mode_mi
           "ram_q3_min":q3Min, "ram_q3_max":q3Max, "ram_weighted_avg":weightedMean, \
           "ram_best": bestTrials, "ram_worst": worstTrials, "ram_average": averageTrials, \
           "ram_integral_median":median, "ram_integral_mean":mean, "ram_integral_avg":mean, \
-          "ram_integral_min":dataMin, "ram_integral_max":dataMax, "ram_integral_sd":stdD, \
+          "ram_integral_min":integralDataMin, "ram_integral_max":integralDataMax, "ram_integral_sd":stdD, \
           "ram_integral_q1":q1, "ram_integral_q2":q2, "ram_integral_q3":q3, "ram_integral_p95":p95, \
           "ram_integral_me":marginError, "ram_integral_ci095_min":CILow, "ram_integral_ci095_max":CIHigh}]
 
