@@ -5,6 +5,8 @@ import gzip
 import uuid
 import math
 
+from datetime import timedelta
+
 import scipy.integrate as integrate
 import scipy.special as special
 import numpy as np
@@ -59,47 +61,18 @@ for d in data:
 data = dataRDD.sortByKey(0, 1) \
         .map(lambda x: x[0]) \
         .collect()
- 
-#mode = data[0]
+        
 dataMin = data[-1]
 dataMax = data[0]
-
-#def computeMedian(d):
-#    leng = len(d)
-#    if leng %2 == 1:
-#        medianIndex = ((leng+1)/2)-1
-#        return (d[medianIndex], medianIndex, "odd")
-#    else:
-#        medianIndex = len(d)/2
-#        lower = d[leng/2-1]
-#        upper = d[leng/2]
-#        return ((float(lower + upper)) / 2.0, medianIndex, "even")
-
 dataLength = len(data)
-#m = computeMedian(data)
-#median = m[0]
-#if m[2] == "odd":
-#    q3 = computeMedian(data[0:m[1]])[0]
-#else:
-#    q3 = computeMedian(data[0:m[1]-1])[0]
-#q2 = m[0]
-#if m[2] == "even":
-#    q1 = computeMedian(data[m[1]:])[0]
-#else:
-#    q1 = computeMedian(data[m[1]+1:])[0]
 median = np.percentile(data, 50).item()
 q1 = np.percentile(data, 25).item()
 q2 = median
 q3 = np.percentile(data, 75).item()
 p95 = np.percentile(data, 95).item()
-      
-#mean = reduce(lambda x, y: x + y, data) / float(dataLength)
 mean = np.mean(data).item()
-#variance = map(lambda x: (x - mean)**2, data)
 variance = np.var(data).item()
-#stdD = math.sqrt(sum(variance) * 1.0 / dataLength)
 stdD = np.std(data).item()
-
 stdE = stdD/float(math.sqrt(dataLength))
 marginError = stdE * 2
 CILow = mean - marginError
@@ -112,6 +85,6 @@ query = [{"experiment_id":experimentID, "throughput_mode":mode, "throughput_mode
           "throughput_q1":q1, "throughput_q2":q2, "throughput_q3":q3, "throughput_p95":p95, \
           "throughput_me":marginError, "throughput_ci095_min":CILow, "throughput_ci095_max":CIHigh}]
 
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
 
 print(data[0])

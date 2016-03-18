@@ -5,6 +5,8 @@ import gzip
 import uuid
 import math
 
+from datetime import timedelta
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
@@ -27,16 +29,20 @@ sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
 
-CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable)
+CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_process_duration") \
+    .select("process_duration_min", "process_duration_max", "process_duration_q1", "process_duration_q2", "process_duration_q3", \
+            "process_duration_p95", "process_duration_median", "process_duration_num_data_points", "process_duration_mean", \
+            "process_duration_me", "trial_id", "process_duration_mode", "process_duration_mode_freq") \
+    .where("experiment_id=?", experimentID)
 CassandraRDD.cache()
 
 def sortAndGet(field, asc):
-    v = CassandraRDD.select(field) \
-        .where("experiment_id=?", experimentID) \
-        .map(lambda x: (x[field], 0)) \
-        .sortByKey(asc, 1) \
-        .map(lambda x: x[0]) \
-        .first()
+    if asc == 1:
+        v = CassandraRDD.map(lambda x: x[field]) \
+            .min()
+    else:
+        v = CassandraRDD.map(lambda x: x[field]) \
+            .max()
     return v
 
 dataMin = sortAndGet("process_duration_min", 1)
@@ -52,91 +58,65 @@ p95Max = sortAndGet("process_duration_p95", 0)
 medianMin = sortAndGet("process_duration_median", 1)
 medianMax = sortAndGet("process_duration_median", 0)
 
-modeMinValues = CassandraRDD.select("process_duration_mode", "process_duration_mode_freq") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: (min(x["process_duration_mode"]), x["process_duration_mode_freq"])) \
+modeMinValues = CassandraRDD.map(lambda x: (min(x["process_duration_mode"]), x["process_duration_mode_freq"])) \
     .sortByKey(1, 1) \
     .map(lambda x: (x[0], x[1])) \
     .first()
 modeMin = modeMinValues[0]
 modeMinFreq = modeMinValues[1]
 
-modeMaxValues = CassandraRDD.select("process_duration_mode", "process_duration_mode_freq") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: (max(x["process_duration_mode"]), x["process_duration_mode_freq"])) \
+modeMaxValues = CassandraRDD.map(lambda x: (max(x["process_duration_mode"]), x["process_duration_mode_freq"])) \
     .sortByKey(0, 1) \
     .map(lambda x: (x[0], x[1])) \
     .first()
 modeMax = modeMaxValues[0]
 modeMaxFreq = modeMaxValues[1]
     
-weightSum = CassandraRDD.select("process_duration_num_data_points") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: x["process_duration_num_data_points"]) \
+weightSum = CassandraRDD.map(lambda x: x["process_duration_num_data_points"]) \
     .reduce(lambda a, b: a+b)
     
-weightedSum = CassandraRDD.select("process_duration_num_data_points", "process_duration_mean") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: x["process_duration_mean"]*x["process_duration_num_data_points"]) \
+weightedSum = CassandraRDD.map(lambda x: x["process_duration_mean"]*x["process_duration_num_data_points"]) \
     .reduce(lambda a, b: a+b)
 
 weightedMean = weightedSum/weightSum
 
 meanMin = sortAndGet("process_duration_mean", 1)
-meMin = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["process_duration_mean"] == meanMin) \
+meMin = CassandraRDD.filter(lambda x: x["process_duration_mean"] == meanMin) \
     .map(lambda x: (x["process_duration_me"], 0)) \
     .sortByKey(1, 1) \
     .map(lambda x: x[0]) \
     .first()
-bestTrials = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["process_duration_mean"] == meanMin and x["process_duration_me"] == meMin) \
+bestTrials = CassandraRDD.filter(lambda x: x["process_duration_mean"] == meanMin and x["process_duration_me"] == meMin) \
     .map(lambda x: x["trial_id"]) \
     .collect()
 
 meanMax = sortAndGet("process_duration_mean", 0)
-meMax = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["process_duration_mean"] == meanMax) \
+meMax = CassandraRDD.filter(lambda x: x["process_duration_mean"] == meanMax) \
     .map(lambda x: (x["process_duration_me"], 0)) \
     .sortByKey(0, 1) \
     .map(lambda x: x[0]) \
     .first()
-worstTrials = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["process_duration_mean"] == meanMax and x["process_duration_me"] == meMax) \
+worstTrials = CassandraRDD.filter(lambda x: x["process_duration_mean"] == meanMax and x["process_duration_me"] == meMax) \
     .map(lambda x: x["trial_id"]) \
     .collect()
     
-meanAverage = CassandraRDD.select("trial_id", "process_duration_mean") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: (x["process_duration_mean"], 1)) \
+meanAverage = CassandraRDD.map(lambda x: (x["process_duration_mean"], 1)) \
     .reduce(lambda a, b: a+b)
 meanAverage = meanAverage[0]/meanAverage[1]
-meAverage = CassandraRDD.select("trial_id", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: (x["process_duration_me"], 1)) \
+meAverage = CassandraRDD.map(lambda x: (x["process_duration_me"], 1)) \
     .reduce(lambda a, b: a+b)
 meAverage = meAverage[0]/meAverage[1]
-averageTrialsUpperMean = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: (x["process_duration_mean"], x["trial_id"])) \
+averageTrialsUpperMean = CassandraRDD.map(lambda x: (x["process_duration_mean"], x["trial_id"])) \
     .sortByKey(1, 1) \
     .filter(lambda x: x[0] >= meanAverage) \
     .map(lambda x: x[0]) \
     .first()
-averageTrialsLowerMean = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .map(lambda x: (x["process_duration_mean"], x["trial_id"])) \
+averageTrialsLowerMean = CassandraRDD.map(lambda x: (x["process_duration_mean"], x["trial_id"])) \
     .sortByKey(0, 1) \
     .filter(lambda x: x[0] <= meanAverage) \
     .map(lambda x: x[0]) \
     .first()
-averageTrials = CassandraRDD.select("trial_id", "process_duration_mean", "process_duration_me") \
-    .where("experiment_id=?", experimentID) \
-    .filter(lambda x: x["process_duration_mean"] == averageTrialsUpperMean or x["process_duration_mean"] == averageTrialsLowerMean) \
+averageTrials = CassandraRDD.filter(lambda x: x["process_duration_mean"] == averageTrialsUpperMean or x["process_duration_mean"] == averageTrialsLowerMean) \
     .map(lambda x: x["trial_id"]) \
     .collect()
 
@@ -151,4 +131,4 @@ query = [{"experiment_id":experimentID, "process_duration_mode_min":modeMin, "pr
           "process_duration_q3_min":q3Min, "process_duration_q3_max":q3Max, "process_duration_weighted_avg":weightedMean, \
           "process_duration_best": bestTrials, "process_duration_worst": worstTrials, "process_duration_average": averageTrials}]
 
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))

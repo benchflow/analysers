@@ -6,6 +6,8 @@ import uuid
 import math
 import datetime 
 
+from datetime import timedelta
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
@@ -107,4 +109,4 @@ print(tp)
 # TODO: Fix this
 query = [{"experiment_id":experimentID, "trial_id":trialID, "throughput":tp, "execution_time":delta}]
 
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))

@@ -4,6 +4,8 @@ import io
 import gzip
 import uuid
 
+from datetime import timedelta
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
@@ -72,6 +74,6 @@ data = len(data)
 
 query = [{"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":data}]
 
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
 
 print(data)

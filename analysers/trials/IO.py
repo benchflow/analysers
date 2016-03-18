@@ -4,6 +4,8 @@ import io
 import gzip
 import uuid
 
+from datetime import timedelta
+
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
@@ -69,4 +71,4 @@ for d in devices.keys():
     queries.append({"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "device":d, "reads":maxReads, "writes":maxWrites, "total":maxTotal})
 
 
-sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable)
+sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))

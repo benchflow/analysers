@@ -5,6 +5,8 @@ import gzip
 import uuid
 import math
 
+from datetime import timedelta
+
 import scipy.integrate as integrate
 import scipy.special as special
 import numpy as np
@@ -32,22 +34,22 @@ sc = CassandraSparkContext(conf=conf)
 
 # TODO: Use Spark for all computations
 
-CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_cpu")
+CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_cpu") \
+    .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p95", "cpu_median", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID)
 CassandraRDD.cache()
 
-nOfActiveCores = CassandraRDD.select("cpu_cores") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .first()
+nOfActiveCores = CassandraRDD.first()
 
 nOfActiveCores = nOfActiveCores["cpu_cores"]
 
 def sortAndGet(field, asc):
-    v = CassandraRDD.select(field) \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .map(lambda x: (x[field], 0)) \
-        .sortByKey(asc, 1) \
-        .map(lambda x: x[0]) \
-        .first()
+    if asc == 1:
+        v = CassandraRDD.map(lambda x: x[field]) \
+            .min()
+    else:
+        v = CassandraRDD.map(lambda x: x[field]) \
+            .max()
     return v
 
 dataMin = sortAndGet("cpu_min", 1)
@@ -63,79 +65,55 @@ p95Max = sortAndGet("cpu_p95", 0)
 medianMin = sortAndGet("cpu_median", 1)
 medianMax = sortAndGet("cpu_median", 0)
     
-weightSum = CassandraRDD.select("cpu_num_data_points") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: x["cpu_num_data_points"]) \
+weightSum = CassandraRDD.map(lambda x: x["cpu_num_data_points"]) \
     .reduce(lambda a, b: a+b)
     
-weightedSum = CassandraRDD.select("cpu_num_data_points", "cpu_mean") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: x["cpu_mean"]*x["cpu_num_data_points"]) \
+weightedSum = CassandraRDD.map(lambda x: x["cpu_mean"]*x["cpu_num_data_points"]) \
     .reduce(lambda a, b: a+b)
 
 weightedMean = weightedSum/weightSum
 
 meanMin = sortAndGet("cpu_mean", 1)
-meMin = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .filter(lambda x: x["cpu_mean"] == meanMin) \
+meMin = CassandraRDD.filter(lambda x: x["cpu_mean"] == meanMin) \
     .map(lambda x: (x["cpu_me"], 0)) \
     .sortByKey(1, 1) \
     .map(lambda x: x[0]) \
     .first()
-bestTrials = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .filter(lambda x: x["cpu_mean"] == meanMin and x["cpu_me"] == meMin) \
+bestTrials = CassandraRDD.filter(lambda x: x["cpu_mean"] == meanMin and x["cpu_me"] == meMin) \
     .map(lambda x: x["trial_id"]) \
     .collect()
 
 meanMax = sortAndGet("cpu_mean", 0)
-meMax = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .filter(lambda x: x["cpu_mean"] == meanMax) \
+meMax = CassandraRDD.filter(lambda x: x["cpu_mean"] == meanMax) \
     .map(lambda x: (x["cpu_me"], 0)) \
     .sortByKey(0, 1) \
     .map(lambda x: x[0]) \
     .first()
-worstTrials = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .filter(lambda x: x["cpu_mean"] == meanMax and x["cpu_me"] == meMax) \
+worstTrials = CassandraRDD.filter(lambda x: x["cpu_mean"] == meanMax and x["cpu_me"] == meMax) \
     .map(lambda x: x["trial_id"]) \
     .collect()
     
-meanAverage = CassandraRDD.select("trial_id", "cpu_mean") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: (x["cpu_mean"], 1)) \
+meanAverage = CassandraRDD.map(lambda x: (x["cpu_mean"], 1)) \
     .reduce(lambda a, b: a+b)
 meanAverage = meanAverage[0]/meanAverage[1]
-meAverage = CassandraRDD.select("trial_id", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: (x["cpu_me"], 1)) \
+meAverage = CassandraRDD.map(lambda x: (x["cpu_me"], 1)) \
     .reduce(lambda a, b: a+b)
 meAverage = meAverage[0]/meAverage[1]
-averageTrialsUpperMean = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: (x["cpu_mean"], x["trial_id"])) \
+averageTrialsUpperMean = CassandraRDD.map(lambda x: (x["cpu_mean"], x["trial_id"])) \
     .sortByKey(1, 1) \
     .filter(lambda x: x[0] >= meanAverage) \
     .map(lambda x: x[0]) \
     .first()
-averageTrialsLowerMean = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .map(lambda x: (x["cpu_mean"], x["trial_id"])) \
+averageTrialsLowerMean = CassandraRDD.map(lambda x: (x["cpu_mean"], x["trial_id"])) \
     .sortByKey(0, 1) \
     .filter(lambda x: x[0] <= meanAverage) \
     .map(lambda x: x[0]) \
     .first()
-averageTrials = CassandraRDD.select("trial_id", "cpu_mean", "cpu_me") \
-    .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-    .filter(lambda x: x["cpu_mean"] == averageTrialsUpperMean or x["cpu_mean"] == averageTrialsLowerMean) \
+averageTrials = CassandraRDD.filter(lambda x: x["cpu_mean"] == averageTrialsUpperMean or x["cpu_mean"] == averageTrialsLowerMean) \
     .map(lambda x: x["trial_id"]) \
     .collect()
 
-data = CassandraRDD.select("cpu_integral") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .map(lambda x: (x["cpu_integral"], 0)) \
+data = CassandraRDD.map(lambda x: (x["cpu_integral"], 0)) \
         .sortByKey(0, 1) \
         .map(lambda x: x[0]) \
         .collect()
@@ -178,22 +156,20 @@ sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_cpu")
 #####################################################
 
 
-CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_cpu_core")
+CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_cpu_core") \
+    .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p95", "cpu_median", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id") \
+    .where("experiment_id=? AND container_id=?", experimentID, containerID)
 CassandraRDD.cache()
 
-nOfCores = CassandraRDD.select("cpu_mean") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .first()                                                                                           
-                                                                                                           
-nOfCores = len(nOfCores["cpu_mean"]) 
+nOfCores = len(CassandraRDD.first()["cpu_mean"])
 
 def sortAndGetCore(field, asc, i):
-    v = CassandraRDD.select(field) \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .map(lambda x: (x[field][i], 0)) \
-        .sortByKey(asc, 1) \
-        .map(lambda x: x[0]) \
-        .first()
+    if asc == 1:
+        v = CassandraRDD.map(lambda x: x[field][i]) \
+            .min()
+    else:
+        v = CassandraRDD.map(lambda x: x[field][i]) \
+            .max()
     return v
 
 # TODO: Fix this
@@ -221,14 +197,10 @@ for i in range(nOfCores):
     meanMin = sortAndGetCore("cpu_mean", 1, i)
     meanMax = sortAndGetCore("cpu_mean", 0, i)
         
-    weightSum = CassandraRDD.select("cpu_num_data_points") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .map(lambda x: x["cpu_num_data_points"]) \
+    weightSum = CassandraRDD.map(lambda x: x["cpu_num_data_points"]) \
         .reduce(lambda a, b: a+b)
         
-    weightedSum = CassandraRDD.select("cpu_num_data_points", "cpu_mean") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .map(lambda x: x["cpu_mean"][i]*x["cpu_num_data_points"]) \
+    weightedSum = CassandraRDD.map(lambda x: x["cpu_mean"][i]*x["cpu_num_data_points"]) \
         .reduce(lambda a, b: a+b)
 
     weightedMean = weightedSum/weightSum
@@ -248,4 +220,4 @@ for i in range(nOfCores):
     query[0]["cpu_p95_min"][i] = p95Min
     query[0]["cpu_p95_max"][i] = p95Max
 
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_cpu_core")
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_cpu_core", ttl=timedelta(hours=1))
