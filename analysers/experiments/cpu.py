@@ -181,6 +181,12 @@ sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_cpu")
 CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_cpu_core")
 CassandraRDD.cache()
 
+nOfCores = CassandraRDD.select("cpu_mean") \
+        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+        .first()                                                                                           
+                                                                                                           
+nOfCores = len(nOfCores["cpu_mean"]) 
+
 def sortAndGetCore(field, asc, i):
     v = CassandraRDD.select(field) \
         .where("experiment_id=? AND container_id=?", experimentID, containerID) \
