@@ -5,6 +5,8 @@ import gzip
 import uuid
 import math
 
+from datetime import timedelta
+
 import scipy.integrate as integrate
 import scipy.special as special
 import numpy as np
@@ -47,7 +49,7 @@ def computeMetrics(data):
     marginError = stdE * 2
     CILow = mean - marginError
     CIHigh = mean + marginError
-    dataIntegral = sum(integrate.cumtrapz(data)).item()
+    dataIntegral = integrate.trapz(data).item()
 
     # TODO: Fix this
     return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, "cpu_cores":nOfCores, \
@@ -139,4 +141,4 @@ for i in range(nOfCores):
     query[0]["cpu_ci095_max"][i] = met[0]["cpu_ci095_max"]
 
    
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu_core")
+sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu_core", ttl=timedelta(hours=1))

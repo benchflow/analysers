@@ -140,9 +140,9 @@ data = CassandraRDD.select("cpu_integral") \
         .map(lambda x: x[0]) \
         .collect()
 
-dataMin = data[-1]
-dataMax = data[0]
-dataLength = len(data)
+integralDataMin = data[-1]
+integralDataMax = data[0]
+integralDataLength = len(data)
 median = np.percentile(data, 50).item()
 q1 = np.percentile(data, 25).item()
 q2 = median
@@ -151,7 +151,7 @@ p95 = np.percentile(data, 95).item()
 mean = np.mean(data, dtype=np.float64).item()
 variance = np.var(data, dtype=np.float64).item()
 stdD = np.std(data, dtype=np.float64).item()
-stdE = stdD/float(math.sqrt(dataLength))
+stdE = stdD/float(math.sqrt(integralDataLength))
 marginError = stdE * 2
 CILow = mean - marginError
 CIHigh = mean + marginError
@@ -166,7 +166,7 @@ query = [{"experiment_id":experimentID, "container_id":containerID, "cpu_cores":
           "cpu_q3_min":q3Min, "cpu_q3_max":q3Max, "cpu_weighted_avg":weightedMean, \
           "cpu_best": bestTrials, "cpu_worst": worstTrials, "cpu_average": averageTrials, \
           "cpu_integral_median":median, "cpu_integral_mean":mean, "cpu_integral_avg":mean, \
-          "cpu_integral_min":dataMin, "cpu_integral_max":dataMax, "cpu_integral_sd":stdD, \
+          "cpu_integral_min":integralDataMin, "cpu_integral_max":integralDataMax, "cpu_integral_sd":stdD, \
           "cpu_integral_q1":q1, "cpu_integral_q2":q2, "cpu_integral_q3":q3, "cpu_integral_p95":p95, \
           "cpu_integral_me":marginError, "cpu_integral_ci095_min":CILow, "cpu_integral_ci095_max":CIHigh}]
 
