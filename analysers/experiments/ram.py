@@ -154,7 +154,7 @@ data = CassandraRDD.select("ram_integral") \
 
 integralDataMin = data[-1]
 integralDataMax = data[0]
-dataLength = len(data)
+integralDataLength = len(data)
 median = np.percentile(data, 50).item()
 q1 = np.percentile(data, 25).item()
 q2 = median
