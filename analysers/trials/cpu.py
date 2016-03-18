@@ -52,7 +52,7 @@ def computeMetrics(data):
     dataIntegral = integrate.trapz(data).item()
 
     # TODO: Fix this
-    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, "cpu_cores":nOfCores, \
+    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, "cpu_cores":nOfActiveCores, \
               "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
               "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
               "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]
@@ -63,12 +63,12 @@ def f1(r):
     else:
         return (r['cpu_percent_usage'], 1)
 
-nOfCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
+nOfActiveCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_cores") \
         .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
         .first()
         
-nOfCores = nOfCores["cpu_cores"]
+nOfActiveCores = nOfActiveCores["cpu_cores"]
 
 dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_percent_usage") \
@@ -95,12 +95,14 @@ dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .map(f2) \
         .filter(lambda r: r[0] is not None) \
         .cache()
+        
+nOfCores = len(dataRDD.first()[0])
 
 query = [{}]
 query[0]["experiment_id"] = experimentID
 query[0]["trial_id"] = trialID
 query[0]["container_id"] = containerID
-query[0]["cpu_cores"] = nOfCores
+query[0]["cpu_cores"] = nOfActiveCores
 query[0]["cpu_num_data_points"] = None
 query[0]["cpu_median"] = [None]*nOfCores
 query[0]["cpu_mean"] = [None]*nOfCores
