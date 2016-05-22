@@ -15,78 +15,52 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-# Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-sparkMaster = sys.argv[1]
-cassandraHost = sys.argv[2]
-trialID = sys.argv[3]
-containerID = sys.argv[4]
-experimentID = trialID.split("_")[0]
-cassandraKeyspace = "benchflow"
-srcTable = "environment_data"
-destTable = "trial_ram"
-
-# Set configuration for spark context
-conf = SparkConf() \
-    .setAppName("Ram analyser") \
-    .setMaster(sparkMaster) \
-    .set("spark.cassandra.connection.host", cassandraHost)
-sc = CassandraSparkContext(conf=conf)
-
-def computeMetrics(data):
-    dataMin = data[-1]
-    dataMax = data[0]
-    dataLength = len(data)
-    median = np.percentile(data, 50).item()
-    q1 = np.percentile(data, 25).item()
-    q2 = median
-    q3 = np.percentile(data, 75).item()
-    p95 = np.percentile(data, 95).item()
-    mean = np.mean(data, dtype=np.float64).item()
-    variance = np.var(data, dtype=np.float64).item()
-    stdD = np.std(data, dtype=np.float64).item()
-    stdE = stdD/float(math.sqrt(dataLength))
-    marginError = stdE * 2
-    CILow = mean - marginError
-    CIHigh = mean + marginError
-    dataIntegral = integrate.trapz(data).item()
+def createQuery(dataRDD, experimentID, trialID, containerID):
+    from commons import computeMode, computeMetrics
     
-    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "ram_median":median, \
-          "ram_mean":mean, "ram_avg":mean, "ram_integral":dataIntegral, "ram_num_data_points":dataLength, \
-          "ram_min":dataMin, "ram_max":dataMax, "ram_sd":stdD, \
-          "ram_q1":q1, "ram_q2":q2, "ram_q3":q3, "ram_p95":p95, "ram_me":marginError, "ram_ci095_min":CILow, "ram_ci095_max":CIHigh}]
-
-def f(r):
-    if r['memory_usage'] == None:
-        return (0, 1)
-    else:
-        return (r['memory_usage'], 1)
-
-dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("memory_usage") \
-        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
-        .map(f) \
-        .cache()
-
-data = dataRDD.reduceByKey(lambda a, b: a + b) \
-        .map(lambda x: (x[1], x[0])) \
-        .sortByKey(0, 1) \
-        .collect()
+    mode = computeMode(dataRDD)
     
-mode = list()
-highestCount = data[0][0]        
-for d in data:
-    if d[0] == highestCount:
-        mode.append(d[1])
-    else:
-        break
+    data = dataRDD.map(lambda x: x[0]).collect()
+     
+    metrics = computeMetrics(data)
+    
+    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, \
+              "ram_mode":mode[0], "ram_mode_freq":mode[1], "ram_median":metrics["median"], "ram_integral":metrics["integral"], \
+              "ram_mean":metrics["mean"], "ram_num_data_points":metrics["num_data_points"], \
+              "ram_min":metrics["min"], "ram_max":metrics["max"], "ram_sd":metrics["sd"], \
+              "ram_q1":metrics["q1"], "ram_q2":metrics["q2"], "ram_q3":metrics["q3"], "ram_p95":metrics["p95"], \
+              "ram_me":metrics["me"], "ram_ci095_min":metrics["ci095_min"], "ram_ci095_max":metrics["ci095_max"]}]
+    return query
 
-data = dataRDD.sortByKey(0, 1) \
-        .map(lambda x: x[0]) \
-        .collect()
- 
-query = computeMetrics(data)
-query[0]["ram_mode"] = mode
-query[0]["ram_mode_freq"] = highestCount
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+def getAnalyserConf(SUTName):
+    from commons import getAnalyserConfiguration
+    return getAnalyserConfiguration(SUTName)
 
-print(data[0])
+def main():
+    # Takes arguments
+    trialID = sys.argv[1]
+    experimentID = sys.argv[2]
+    SUTName = sys.argv[3]
+    containerID = sys.argv[4]
+    
+    # Set configuration for spark context
+    conf = SparkConf().setAppName("Ram trial analyser")
+    sc = CassandraSparkContext(conf=conf)
+    
+    analyserConf = getAnalyserConf(SUTName)
+    srcTable = "environment_data"
+    destTable = "trial_ram"
+    
+    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
+            .select("memory_usage") \
+            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .filter(lambda r: r["memory_usage"] is not None) \
+            .map(lambda r: (r['memory_usage'], 1)) \
+            .cache()
+    
+    query = createQuery(dataRDD, experimentID, trialID, containerID)
+    
+    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    
+if __name__ == '__main__':
+    main()

@@ -13,119 +13,53 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-# Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-sparkMaster = sys.argv[1]
-cassandraHost = sys.argv[2]
-trialID = sys.argv[3]
-experimentID = trialID.split("_")[0]
-nToIgnore = 5
-cassandraKeyspace = "benchflow"
-srcTable = "process"
-destTable = "trial_process_duration"
-
-# Set configuration for spark context
-conf = SparkConf() \
-    .setAppName("Process duration analyser") \
-    .setMaster(sparkMaster) \
-    .set("spark.cassandra.connection.host", cassandraHost)
-sc = CassandraSparkContext(conf=conf)
-
-# TODO: Use Spark for all computations
-
-dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
-        .select("process_definition_id", "source_process_instance_id", "start_time", "duration") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .filter(lambda r: r["process_definition_id"] is not None) \
-        .cache()
-
-processes = dataRDD.map(lambda r: r["process_definition_id"]) \
-        .distinct() \
-        .collect()
-
-maxTime = None
-maxID = None
-for p in processes:
-    time = dataRDD.filter(lambda r: r["process_definition_id"] == p) \
-        .map(lambda r: (r["start_time"], r["source_process_instance_id"])) \
-        .sortByKey(1, 1) \
-        .collect()
-    if len(time) < nToIgnore:
-        continue
-    else:
-        time = time[nToIgnore-1]
-    if maxTime is None or time[0] > maxTime:
-        maxTime = time[0]
-        defId = dataRDD.filter(lambda r: r["process_definition_id"] == p and r["start_time"] == maxTime) \
-            .map(lambda r: (r["source_process_instance_id"], 0)) \
-            .sortByKey(1, 1) \
-            .first()
-        maxID = defId[0]
-
-print(maxTime)
-
-data = dataRDD.map(lambda r: (r["start_time"], r)) \
-        .sortByKey(1, 1) \
-        .map(lambda r: r[1]) \
-        .collect()
-
-index = -1
-if maxID is not None:
-    for i in range(len(data)):
-        if data[i]["source_process_instance_id"] == maxID:
-            index = i
-            break
-
-data = sc.parallelize(data[index+1:])
-
-def f(r):
-    if r['duration'] == None:
-        return (0, 1)
-    else:
-        return (r['duration'], 1)
-
-dataRDD = data.map(f) \
-        .cache()
-
-data = dataRDD.reduceByKey(lambda a, b: a + b) \
-        .map(lambda x: (x[1], x[0])) \
-        .sortByKey(0, 1) \
-        .collect()
+def createQuery(sc, dataRDD, experimentID, trialID, nToIgnore):
+    from commons import cutNInitialProcesses, computeMode, computeMetrics
     
-mode = list()
-highestCount = data[0][0]        
-for d in data:
-    if d[0] == highestCount:
-        mode.append(d[1])
-    else:
-        break
+    data = cutNInitialProcesses(dataRDD, nToIgnore)
+    dataRDD = sc.parallelize(data)
+    
+    dataRDD = dataRDD.filter(lambda r: r['duration'] != None) \
+            .map(lambda r: (r['duration'], 1)) \
+            .cache()
+                   
+    mode = computeMode(dataRDD)
+    
+    data = dataRDD.map(lambda r: r[0]).collect()
+    metrics = computeMetrics(data)
+    
+    return [{"experiment_id":experimentID, "trial_id":trialID, "process_duration_mode":mode[0], "process_duration_mode_freq":mode[1], "process_duration_median":metrics["median"], \
+              "process_duration_mean":metrics["mean"], "process_duration_num_data_points":metrics["num_data_points"], \
+              "process_duration_min":metrics["min"], "process_duration_max":metrics["max"], "process_duration_sd":metrics["sd"], \
+              "process_duration_q1":metrics["q1"], "process_duration_q2":metrics["q2"], "process_duration_q3":metrics["q3"], "process_duration_p95":metrics["p95"], \
+              "process_duration_me":metrics["me"], "process_duration_ci095_min":metrics["ci095_min"], "process_duration_ci095_max":metrics["ci095_max"]}]
 
-data = dataRDD.sortByKey(0, 1) \
-        .map(lambda x: x[0]) \
-        .collect()
- 
-dataMin = data[-1]
-dataMax = data[0]
-dataLength = len(data)
-median = np.percentile(data, 50).item()
-q1 = np.percentile(data, 25).item()
-q2 = median
-q3 = np.percentile(data, 75).item()
-p95 = np.percentile(data, 95).item()
-mean = np.mean(data, dtype=np.float64).item()
-variance = np.var(data, dtype=np.float64).item()
-stdD = np.std(data, dtype=np.float64).item()
-stdE = stdD/float(math.sqrt(dataLength))
-marginError = stdE * 2
-CILow = mean - marginError
-CIHigh = mean + marginError
+def getAnalyserConf(SUTName):
+    from commons import getAnalyserConfiguration
+    return getAnalyserConfiguration(SUTName)
 
-# TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "process_duration_mode":mode, "process_duration_mode_freq":highestCount, "process_duration_median":median, \
-          "process_duration_mean":mean, "process_duration_avg":mean, "process_duration_num_data_points":dataLength, \
-          "process_duration_min":dataMin, "process_duration_max":dataMax, "process_duration_sd":stdD, \
-          "process_duration_q1":q1, "process_duration_q2":q2, "process_duration_q3":q3, "process_duration_p95":p95, \
-          "process_duration_me":marginError, "process_duration_ci095_min":CILow, "process_duration_ci095_max":CIHigh}]
-
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
-
-print(data[0])
+def main():
+    # Takes arguments: Spark master, Cassandra host, Minio host, path of the files
+    trialID = sys.argv[1]
+    experimentID = sys.argv[2]
+    SUTName = sys.argv[3]
+    
+    # Set configuration for spark context
+    conf = SparkConf().setAppName("Process duration analyser")
+    sc = CassandraSparkContext(conf=conf)
+    
+    analyserConf = getAnalyserConf(SUTName)
+    srcTable = "process"
+    destTable = "trial_process_duration"
+    
+    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable)\
+            .select("process_definition_id", "source_process_instance_id", "start_time", "duration") \
+            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .filter(lambda r: r["process_definition_id"] is not None) \
+            .cache()
+    
+    query = createQuery(sc, dataRDD, experimentID, trialID, analyserConf["initial_processes_cut"])
+    
+    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    
+if __name__ == '__main__': main()

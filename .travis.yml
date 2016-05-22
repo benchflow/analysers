@@ -1,17 +1,28 @@
 sudo: required
-dist: precise
+dist: trusty
 group: edge
 
 language: bash
 
-# whitelist
 branches:
   only:
     - dev
+    - refactored-for-CI
   except:
     - v-dev
 
-install: true
+before_install:
+  - docker build -f ./test/Dockerfile.test -t sparktests .
+  - wget https://raw.githubusercontent.com/benchflow/benchflow/dev/database_schemas/cassandra/benchflow.cql -O ./test/data/benchflow.cql
+
+script:
+  - docker run -d --name cassandra cassandra:3.0
+  - sleep 20
+  - docker cp ./test/data/benchflow.cql cassandra:/
+  - docker cp ./test/data/loadMockData.cql cassandra:/
+  - docker exec -ti cassandra cqlsh -f /benchflow.cql
+  - docker exec -ti cassandra cqlsh -f /loadMockData.cql
+  - docker run --rm --name spark --link cassandra:cassandra --entrypoint=/test/runTests.sh sparktests
 
 after_success:
   # Clean the v-dev release and tag we are using to release development version in CI

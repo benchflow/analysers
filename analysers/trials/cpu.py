@@ -15,132 +15,139 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-# Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-sparkMaster = sys.argv[1]
-cassandraHost = sys.argv[2]
-trialID = sys.argv[3]
-containerID = sys.argv[4]
-experimentID = trialID.split("_")[0]
-cassandraKeyspace = "benchflow"
-srcTable = "environment_data"
-destTable = "trial_cpu"
-
-# Set configuration for spark context
-conf = SparkConf() \
-    .setAppName("Cpu analyser") \
-    .setMaster(sparkMaster) \
-    .set("spark.cassandra.connection.host", cassandraHost)
-sc = CassandraSparkContext(conf=conf)
-
-# TODO: Use Spark for all computations
-def computeMetrics(data):
-    dataMin = data[-1]
-    dataMax = data[0]
-    dataLength = len(data)
-    median = np.percentile(data, 50).item()
-    q1 = np.percentile(data, 25).item()
-    q2 = median
-    q3 = np.percentile(data, 75).item()
-    p95 = np.percentile(data, 95).item()
-    mean = np.mean(data, dtype=np.float64).item()
-    variance = np.var(data, dtype=np.float64).item()
-    stdD = np.std(data, dtype=np.float64).item()
-    stdE = stdD/float(math.sqrt(dataLength))
-    marginError = stdE * 2
-    CILow = mean - marginError
-    CIHigh = mean + marginError
-    dataIntegral = integrate.trapz(data).item()
-
-    # TODO: Fix this
-    return [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":median, "cpu_cores":nOfActiveCores, \
-              "cpu_mean":mean, "cpu_avg":mean, "cpu_integral":dataIntegral, "cpu_num_data_points":dataLength, \
-              "cpu_min":dataMin, "cpu_max":dataMax, "cpu_sd":stdD, \
-              "cpu_q1":q1, "cpu_q2":q2, "cpu_q3":q3, "cpu_p95":p95, "cpu_me":marginError, "cpu_ci095_min":CILow, "cpu_ci095_max":CIHigh}]
-
-def f1(r):
-    if r['cpu_percent_usage'] == None:
-        return (0, 1)
+def getActiveCores(sc, cassandraKeyspace, srcTable, trialID, experimentID, containerID):
+    cpuInfoAvailable = True
+    
+    try:
+        containerProperties = sc.cassandraTable(cassandraKeyspace, "container_properties") \
+                .select("cpu_set_cpus") \
+                .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+                .first()
+    except:
+        cpuInfoAvailable = False
+            
+    if cpuInfoAvailable and "cpu_set_cpus" in containerProperties.keys():
+        cpuSet = containerProperties["cpu_set_cpus"].split(",")
+        nOfCpus = 0
+        for c in cpuSet:
+            cpuRange = c.split("-")
+            if len(cpuRange) == 2:
+                nOfCpus += (len(range(cpuRange[0], cpuRange[1]))+1)
+            else:
+                nOfCpus += 1
+        return nOfCpus
+    
     else:
-        return (r['cpu_percent_usage'], 1)
+        nOfActiveCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
+                .select("cpu_cores") \
+                .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+                .first()
+                
+        nOfCpus = nOfActiveCores["cpu_cores"]
+        return nOfCpus
 
-nOfActiveCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_cores") \
-        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
-        .first()
+def createQuery(dataRDD, experimentID, trialID, containerID, nOfActiveCores):
+    from commons import computeMetrics
+    
+    metrics = computeMetrics(dataRDD)
+    
+    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "cpu_median":metrics["median"], \
+              "cpu_mean":metrics["mean"], "cpu_num_data_points":metrics["num_data_points"], \
+              "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_sd":metrics["sd"], \
+              "cpu_q1":metrics["q1"], "cpu_q2":metrics["q2"], "cpu_q3":metrics["q3"], "cpu_p95":metrics["p95"], \
+              "cpu_me":metrics["me"], "cpu_ci095_min":metrics["ci095_min"], "cpu_ci095_max":metrics["ci095_max"], \
+              "cpu_integral":metrics["integral"], "cpu_cores":nOfActiveCores}]
+    
+    return query
+
+def createCoresQuery(dataRDD, experimentID, trialID, containerID, nOfActiveCores):
+    from commons import computeMetrics
+    
+    nOfCores = len(dataRDD.first())
+    
+    query = [{}]
+    query[0]["experiment_id"] = experimentID
+    query[0]["trial_id"] = trialID
+    query[0]["container_id"] = containerID
+    query[0]["cpu_cores"] = nOfActiveCores
+    query[0]["cpu_num_data_points"] = None
+    query[0]["cpu_median"] = [None]*nOfCores
+    query[0]["cpu_mean"] = [None]*nOfCores
+    query[0]["cpu_integral"] = [None]*nOfCores
+    query[0]["cpu_min"] = [None]*nOfCores
+    query[0]["cpu_max"] = [None]*nOfCores
+    query[0]["cpu_sd"] = [None]*nOfCores
+    query[0]["cpu_q1"] = [None]*nOfCores
+    query[0]["cpu_q2"] = [None]*nOfCores
+    query[0]["cpu_q3"] = [None]*nOfCores
+    query[0]["cpu_p95"] = [None]*nOfCores
+    query[0]["cpu_me"] = [None]*nOfCores
+    query[0]["cpu_ci095_min"] = [None]*nOfCores
+    query[0]["cpu_ci095_max"] = [None]*nOfCores
+    
+    for i in range(nOfCores):
+        data = dataRDD.map(lambda r: r[i]) \
+                .collect()
+    
+        met = computeMetrics(data)
+        query[0]["cpu_num_data_points"] = met["num_data_points"]
+        query[0]["cpu_median"][i] = met["median"]
+        query[0]["cpu_mean"][i] = met["mean"]
+        query[0]["cpu_integral"][i] = met["integral"]
+        query[0]["cpu_min"][i] = met["min"]
+        query[0]["cpu_max"][i] = met["max"]
+        query[0]["cpu_sd"][i] = met["sd"]
+        query[0]["cpu_q1"][i] = met["q1"]
+        query[0]["cpu_q2"][i] = met["q2"]
+        query[0]["cpu_q3"][i] = met["q3"]
+        query[0]["cpu_p95"][i] = met["p95"]
+        query[0]["cpu_me"][i] = met["me"]
+        query[0]["cpu_ci095_min"][i] = met["ci095_min"]
+        query[0]["cpu_ci095_max"][i] = met["ci095_max"]
         
-nOfActiveCores = nOfActiveCores["cpu_cores"]
+    return query
 
-dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_percent_usage") \
-        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
-        .map(f1) \
-        .cache()
+def getAnalyserConf(SUTName):
+    from commons import getAnalyserConfiguration
+    return getAnalyserConfiguration(SUTName)
 
-data = dataRDD.sortByKey(0, 1) \
-        .map(lambda x: x[0]) \
-        .collect()
-
-query = computeMetrics(data)
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu")
-
-def f2(r):
-    if r['cpu_percpu_percent_usage'] == None:
-        return (None, 1)
-    else:
-        return (r['cpu_percpu_percent_usage'], 1)
-
-dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_percpu_percent_usage") \
-        .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
-        .map(f2) \
-        .filter(lambda r: r[0] is not None) \
-        .cache()
-        
-nOfCores = len(dataRDD.first()[0])
-
-query = [{}]
-query[0]["experiment_id"] = experimentID
-query[0]["trial_id"] = trialID
-query[0]["container_id"] = containerID
-query[0]["cpu_cores"] = nOfActiveCores
-query[0]["cpu_num_data_points"] = None
-query[0]["cpu_median"] = [None]*nOfCores
-query[0]["cpu_mean"] = [None]*nOfCores
-query[0]["cpu_avg"] = [None]*nOfCores
-query[0]["cpu_integral"] = [None]*nOfCores
-query[0]["cpu_min"] = [None]*nOfCores
-query[0]["cpu_max"] = [None]*nOfCores
-query[0]["cpu_sd"] = [None]*nOfCores
-query[0]["cpu_q1"] = [None]*nOfCores
-query[0]["cpu_q2"] = [None]*nOfCores
-query[0]["cpu_q3"] = [None]*nOfCores
-query[0]["cpu_p95"] = [None]*nOfCores
-query[0]["cpu_me"] = [None]*nOfCores
-query[0]["cpu_ci095_min"] = [None]*nOfCores
-query[0]["cpu_ci095_max"] = [None]*nOfCores
-
-for i in range(nOfCores):
-    data = dataRDD.map(lambda r: (r[0][i], 1)) \
-            .sortByKey(0, 1) \
-            .map(lambda x: x[0]) \
+def main():
+    # Takes arguments
+    trialID = sys.argv[1]
+    experimentID = sys.argv[2]
+    SUTName = sys.argv[3]
+    containerID = sys.argv[4]
+    
+    # Set configuration for spark context
+    conf = SparkConf().setAppName("Cpu analyser")
+    sc = CassandraSparkContext(conf=conf)
+    
+    analyserConf = getAnalyserConf(SUTName)
+    srcTable = "environment_data"
+    destTable = "trial_cpu"
+    
+    nOfActiveCores = getActiveCores(sc, analyserConf["cassandra_keyspace"], srcTable, trialID, experimentID, containerID)
+    
+    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
+            .select("cpu_percent_usage") \
+            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .filter(lambda r: r['cpu_percent_usage'] is not None) \
+            .map(lambda r: r['cpu_percent_usage']) \
             .collect()
-
-    met = computeMetrics(data)
-    query[0]["cpu_num_data_points"] = met[0]["cpu_num_data_points"]
-    query[0]["cpu_median"][i] = met[0]["cpu_median"]
-    query[0]["cpu_mean"][i] = met[0]["cpu_mean"]
-    query[0]["cpu_avg"][i] = met[0]["cpu_avg"]
-    query[0]["cpu_integral"][i] = met[0]["cpu_integral"]
-    query[0]["cpu_min"][i] = met[0]["cpu_min"]
-    query[0]["cpu_max"][i] = met[0]["cpu_max"]
-    query[0]["cpu_sd"][i] = met[0]["cpu_sd"]
-    query[0]["cpu_q1"][i] = met[0]["cpu_q1"]
-    query[0]["cpu_q2"][i] = met[0]["cpu_q2"]
-    query[0]["cpu_q3"][i] = met[0]["cpu_q3"]
-    query[0]["cpu_p95"][i] = met[0]["cpu_p95"]
-    query[0]["cpu_me"][i] = met[0]["cpu_me"]
-    query[0]["cpu_ci095_min"][i] = met[0]["cpu_ci095_min"]
-    query[0]["cpu_ci095_max"][i] = met[0]["cpu_ci095_max"]
-
-   
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, "trial_cpu_core", ttl=timedelta(hours=1))
+    
+    query = createQuery(dataRDD, experimentID, trialID, containerID, nOfActiveCores)
+    
+    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], "trial_cpu")
+    
+    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
+            .select("cpu_percpu_percent_usage") \
+            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .filter(lambda r: r['cpu_percpu_percent_usage'] is not None) \
+            .map(lambda r: r['cpu_percpu_percent_usage']) \
+            .cache()
+    
+    query = createCoresQuery(dataRDD, experimentID, trialID, containerID, nOfActiveCores)
+       
+    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], "trial_cpu_core", ttl=timedelta(hours=1))
+    
+if __name__ == '__main__': main()

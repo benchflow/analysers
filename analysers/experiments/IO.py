@@ -15,102 +15,74 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-# Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-sparkMaster = sys.argv[1]
-cassandraHost = sys.argv[2]
-trialID = sys.argv[3]
-containerID = sys.argv[4]
-experimentID = trialID.split("_")[0]
-cassandraKeyspace = "benchflow"
-srcTable = "trial_io"
-destTable = "exp_io"
-
-# Set configuration for spark context
-conf = SparkConf() \
-    .setAppName("IO analyser") \
-    .setMaster(sparkMaster) \
-    .set("spark.cassandra.connection.host", cassandraHost)
-sc = CassandraSparkContext(conf=conf)
-
-# TODO: Use Spark for all computations
-data = sc.cassandraTable(cassandraKeyspace, srcTable)\
-        .select("device") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-        .collect()
-
-devices = {}
-for e in data:
-    dev = e["device"]
-    devices[dev] = 0
-    
-queries = []
-
-def computeMetrics(op, dev):
-    
-    def f(r):
-        if r[op] == None:
-            return (None, 1)
-        else:
-            return (r[op], 1)
+def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID):
+    from commons import computeMode, computeMetrics
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("device", op) \
             .where("experiment_id=? AND container_id=?", experimentID, containerID) \
-            .filter(lambda a: a["device"] == dev) \
-            .map(f) \
+            .filter(lambda a: a["device"] == dev and a[op] is not None) \
+            .map(lambda a: (a[op], 1)) \
             .cache()
-            
-    if (dataRDD.first())[0] is None:
+    
+    if len(dataRDD.collect()) == 0:
         return {"experiment_id":experimentID, "container_id":containerID, "device":dev}
-    
-    data = dataRDD.reduceByKey(lambda a, b: a + b) \
-            .map(lambda x: (x[1], x[0])) \
-            .sortByKey(0, 1) \
-            .collect()
         
-    mode = list()
-    highestCount = data[0][0]        
-    for d in data:
-        if d[0] == highestCount:
-            mode.append(d[1])
-        else:
-            break
+    mode = computeMode(dataRDD)
     
-    data = dataRDD.sortByKey(0, 1) \
-            .map(lambda x: x[0]) \
+    data = dataRDD.map(lambda x: x[0]) \
             .collect()
      
-    dataMin = data[-1]
-    dataMax = data[0]
-    dataLength = len(data)
-    median = np.percentile(data, 50).item()
-    q1 = np.percentile(data, 25).item()
-    q2 = median
-    q3 = np.percentile(data, 75).item()
-    p95 = np.percentile(data, 95).item()
-    mean = np.mean(data, dtype=np.float64).item()
-    variance = np.var(data, dtype=np.float64).item()
-    stdD = np.std(data, dtype=np.float64).item()
-    
-    stdE = stdD/float(math.sqrt(dataLength))
-    marginError = stdE * 2
-    CILow = mean - marginError
-    CIHigh = mean + marginError
+    metrics = computeMetrics(data)
 
     # TODO: Fix this
-    query = {"experiment_id":experimentID, "container_id":containerID, "device":dev, op+"_mode":mode, op+"_mode_freq":highestCount, op+"_median":median, \
-              op+"_avg":mean, \
-              op+"_min":dataMin, op+"_max":dataMax, op+"_sd":stdD, \
-              op+"_q1":q1, op+"_q2":q2, op+"_q3":q3, op+"_p95":p95, \
-              op+"_me":marginError, op+"_ci095_min":CILow, op+"_ci095_max":CIHigh}
+    query = {"experiment_id":experimentID, "container_id":containerID, "device":dev, op+"_mode":mode[0], \
+              op+"_mode_freq":mode[1], op+"_median":metrics["median"], op+"_avg":metrics["mean"], \
+              op+"_min":metrics["min"], op+"_max":metrics["max"], op+"_sd":metrics["sd"], \
+              op+"_q1":metrics["q1"], op+"_q2":metrics["q2"], op+"_q3":metrics["q3"], op+"_p95":metrics["p95"], \
+              op+"_me":metrics["me"], op+"_ci095_min":metrics["ci095_min"], op+"_ci095_max":metrics["ci095_max"]}
     
     return query
-        
-for k in devices.keys():
-    query = {}
-    query.update(computeMetrics("reads", k))
-    query.update(computeMetrics("writes", k))
-    query.update(computeMetrics("total", k))
-    queries.append(query)
 
-sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+def getAnalyserConf(SUTName):
+    from commons import getAnalyserConfiguration
+    return getAnalyserConfiguration(SUTName)
+
+def main():        
+    # Takes arguments
+    trialID = sys.argv[1]
+    experimentID = sys.argv[2]
+    SUTName = sys.argv[3]
+    containerID = sys.argv[4]
+    
+    # Set configuration for spark context
+    conf = SparkConf().setAppName("IO analyser")
+    sc = CassandraSparkContext(conf=conf)
+    
+    analyserConf = getAnalyserConf(SUTName)
+    srcTable = "trial_io"
+    destTable = "exp_io"
+    
+    data = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable)\
+            .select("device") \
+            .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+            .collect()
+    
+    devices = {}
+    for e in data:
+        dev = e["device"]
+        devices[dev] = 0
+        
+    queries = []
+    
+    for k in devices.keys():
+        query = {}
+        query.update(createQuery("reads", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, trialID, containerID))
+        query.update(createQuery("writes", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, trialID, containerID))
+        query.update(createQuery("total", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, trialID, containerID))
+        queries.append(query)
+    
+    sc.parallelize(queries).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    
+if __name__ == '__main__':
+    main()

@@ -11,102 +11,80 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
+from pyspark import SparkFiles
 
-# Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-sparkMaster = sys.argv[1]
-cassandraHost = sys.argv[2]
-trialID = sys.argv[3]
-experimentID = trialID.split("_")[0]
-nToIgnore = 5
-cassandraKeyspace = "benchflow"
-srcTable = "process"
-destTable = "trial_throughput"
-
-# Set configuration for spark context
-conf = SparkConf() \
-    .setAppName("Process duration analyser") \
-    .setMaster(sparkMaster) \
-    .set("spark.cassandra.connection.host", cassandraHost)
-sc = CassandraSparkContext(conf=conf)
-
-# TODO: Use Spark for all computations
-
-dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
-        .select("process_definition_id", "source_process_instance_id", "end_time", "start_time") \
-        .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-        .filter(lambda r: r["process_definition_id"] is not None) \
-        .cache()
-
-processes = dataRDD.map(lambda r: r["process_definition_id"]) \
-        .distinct() \
-        .collect()
-
-maxTime = None
-maxID = None
-for p in processes:
-    time = dataRDD.filter(lambda r: r["process_definition_id"] == p) \
-        .map(lambda r: (r["start_time"], r["source_process_instance_id"])) \
-        .sortByKey(1, 1) \
-        .collect()
-    if len(time) < nToIgnore:
-        continue
-    else:
-        time = time[nToIgnore-1]
-    if maxTime is None or time[0] > maxTime:
-        maxTime = time[0]
-        defId = dataRDD.filter(lambda r: r["process_definition_id"] == p and r["start_time"] == maxTime) \
-            .map(lambda r: (r["source_process_instance_id"], 0)) \
-            .sortByKey(1, 1) \
-            .first()
-        maxID = defId[0]
-
-print(maxTime)
-
-data = dataRDD.map(lambda r: (r["start_time"], r)) \
-        .sortByKey(1, 1) \
-        .map(lambda r: r[1]) \
-        .collect()
-
-index = -1
-if maxID is not None:
-    for i in range(len(data)):
-        if data[i]["source_process_instance_id"] == maxID:
-            index = i
-            break
+def computeThroughput(dataRDD):
+    if(dataRDD.isEmpty()):
+        return (None, None)
     
-data = sc.parallelize(data[index+1:])
-
-data = data.map(lambda r: (r['start_time'], r['end_time'])) \
-        .collect()
-
-smallest = None
-for d in data:
-    t = d[0]
-    if smallest == None:
-        smallest = t
-    elif t != None:
-        if t < smallest:
+    data = dataRDD.map(lambda r: (r['start_time'], r['end_time'])) \
+            .collect()
+    
+    smallest = None
+    for d in data:
+        t = d[0]
+        if smallest == None:
             smallest = t
-print(smallest)
-        
-largest = None
-for d in data:
-    t = d[1]
-    if largest == None:
-        largest = t
-    elif t != None:
-        if t > largest:
+        elif t != None:
+            if t < smallest:
+                smallest = t
+            
+    largest = None
+    for d in data:
+        t = d[1]
+        if largest == None:
             largest = t
-print(largest)
+        elif t != None:
+            if t > largest:
+                largest = t
+    
+    if largest is None or smallest is None:
+        return (None, None)
+    
+    delta = largest - smallest
+    delta = delta.total_seconds()
+    
+    tp = len(data)/float(delta)
+    
+    return (tp, delta)
+
+def createQuery(sc, dataRDD, experimentID, trialID, nToIgnore):
+    from commons import cutNInitialProcesses
+    
+    data = cutNInitialProcesses(dataRDD, nToIgnore)
         
-delta = largest - smallest
-delta = delta.total_seconds()
-print(delta)
+    dataRDD = sc.parallelize(data)
+    
+    tp = computeThroughput(dataRDD)
+    
+    return [{"experiment_id":experimentID, "trial_id":trialID, "throughput":tp[0], "execution_time":tp[1]}]
 
-tp = len(data)/float(delta)
-print(tp)
+def getAnalyserConf(SUTName):
+    from commons import getAnalyserConfiguration
+    return getAnalyserConfiguration(SUTName)
 
-# TODO: Fix this
-query = [{"experiment_id":experimentID, "trial_id":trialID, "throughput":tp, "execution_time":delta}]
-
-sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+def main():
+    # Takes arguments
+    trialID = sys.argv[1]
+    experimentID = sys.argv[2]
+    SUTName = sys.argv[3]
+    
+    # Set configuration for spark context
+    conf = SparkConf().setAppName("Process duration trial analyser")
+    sc = CassandraSparkContext(conf=conf)
+    
+    analyserConf = getAnalyserConf(SUTName)
+    srcTable = "process"
+    destTable = "trial_throughput"
+    
+    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable)\
+            .select("process_definition_id", "source_process_instance_id", "start_time", "end_time", "duration") \
+            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .filter(lambda r: r["process_definition_id"] is not None) \
+            .cache()
+            
+    query = createQuery(sc, dataRDD, experimentID, trialID, analyserConf["initial_processes_cut"])
+    
+    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    
+if __name__ == '__main__': main()
