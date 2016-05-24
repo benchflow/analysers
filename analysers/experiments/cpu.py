@@ -65,7 +65,7 @@ def computeExperimentCoreMetrics(CassandraRDD, i):
               "p95_max":p95Max, "p95_min":p95Min, \
               "q3_min":q3Min, "q3_max":q3Max, "weighted_avg":weightedMean}
  
-def createQuery(CassandraRDD, experimentID, containerID, nOfActiveCores):
+def createQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores):
     from commons import computeExperimentMetrics, computeMetrics
     
     metrics = computeExperimentMetrics(CassandraRDD, "cpu")
@@ -74,7 +74,7 @@ def createQuery(CassandraRDD, experimentID, containerID, nOfActiveCores):
 
     integralMetrics = computeMetrics(data)
     
-    return [{"experiment_id":experimentID, "container_id":containerID, "cpu_cores":nOfActiveCores, \
+    return [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "cpu_cores":nOfActiveCores, \
               "cpu_median_min":metrics["median_min"], "cpu_median_max":metrics["median_max"], \
               "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_q1_min":metrics["q1_min"], \
               "cpu_q1_max":metrics["q1_max"], "cpu_q2_min":metrics["q2_min"], "cpu_q2_max":metrics["q2_max"], \
@@ -87,10 +87,10 @@ def createQuery(CassandraRDD, experimentID, containerID, nOfActiveCores):
               "cpu_integral_p95":integralMetrics["p95"], "cpu_integral_me":integralMetrics["me"], \
               "cpu_integral_ci095_min":integralMetrics["ci095_min"], "cpu_integral_ci095_max":integralMetrics["ci095_max"]}]
     
-def createCoreQuery(CassandraRDD, experimentID, containerID, nOfActiveCores):
+def createCoreQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores):
     nOfCores = len(CassandraRDD.first()["cpu_mean"])
     
-    query = [{"experiment_id":experimentID, "container_id":containerID, "cpu_cores":nOfActiveCores, \
+    query = [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "cpu_cores":nOfActiveCores, \
               "cpu_median_min":[None]*nOfCores, "cpu_median_max":[None]*nOfCores, \
               "cpu_min":[None]*nOfCores, "cpu_max":[None]*nOfCores, "cpu_q1_min":[None]*nOfCores, \
               "cpu_q1_max":[None]*nOfCores, "cpu_q2_min":[None]*nOfCores, "cpu_q2_max":[None]*nOfCores, \
@@ -125,6 +125,7 @@ def main():
     experimentID = sys.argv[2]
     SUTName = sys.argv[3]
     containerID = sys.argv[4]
+    hostID = sys.argv[5]
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("cpu analyser")
@@ -138,13 +139,13 @@ def main():
     
     CassandraRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
         .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p95", "cpu_median", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID)
+        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
     CassandraRDD.cache()
     
     CassandraRDDFirst = CassandraRDD.first()
     nOfActiveCores = CassandraRDDFirst["cpu_cores"]
     
-    query = createQuery(CassandraRDD, experimentID, containerID, nOfActiveCores)
+    query = createQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores)
 
     sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
 
@@ -152,10 +153,10 @@ def main():
     
     CassandraRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTableCore) \
         .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p95", "cpu_median", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_cores") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID)
+        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
     CassandraRDD.cache()
     
-    query = createCoreQuery(CassandraRDD, experimentID, containerID, nOfActiveCores)
+    query = createCoreQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores)
     
     sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTableCores, ttl=timedelta(hours=1))
     

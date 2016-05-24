@@ -17,6 +17,7 @@ def main():
     trialID = "camundaZZZZZZMV_ZZZZZZOX"
     experimentID = "camundaZZZZZZMV"
     containerID = "stats_camunda"
+    hostID = "docker_host"
     
     # Set configuration for spark context
     conf = SparkConf() \
@@ -27,7 +28,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_io")\
             .select("trial_id") \
-            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -59,7 +60,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_ram")\
             .select("trial_id") \
-            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -67,7 +68,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_cpu_core")\
             .select("trial_id") \
-            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -75,7 +76,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_cpu")\
             .select("trial_id") \
-            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -91,7 +92,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_io")\
             .select("experiment_id") \
-            .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+            .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -123,7 +124,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_ram")\
             .select("experiment_id") \
-            .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+            .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -131,7 +132,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_cpu_core")\
             .select("experiment_id") \
-            .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+            .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
     print(data)
@@ -139,7 +140,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_cpu")\
             .select("experiment_id") \
-            .where("experiment_id=? AND container_id=?", experimentID, containerID) \
+            .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
     print(data)

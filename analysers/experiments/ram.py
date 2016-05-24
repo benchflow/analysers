@@ -15,7 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
     
-def createQuery(CassandraRDD, experimentID, containerID):
+def createQuery(CassandraRDD, experimentID, containerID, hostID):
     from commons import computeExperimentMetrics, computeModeMinMax, computeMetrics
     
     metrics = computeExperimentMetrics(CassandraRDD, "ram")
@@ -25,7 +25,7 @@ def createQuery(CassandraRDD, experimentID, containerID):
 
     integralMetrics = computeMetrics(data)
     
-    return [{"experiment_id":experimentID, "container_id":containerID, "ram_mode_min":metrics["min"], "ram_mode_max":metrics["max"], \
+    return [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "ram_mode_min":metrics["min"], "ram_mode_max":metrics["max"], \
               "ram_mode_min_freq":metrics["mode_min_freq"], "ram_mode_max_freq":metrics["mode_max_freq"], \
               "ram_median_min":metrics["median_min"], "ram_median_max":metrics["median_max"], \
               "ram_mean_min":metrics["mean_min"], "ram_mean_max":metrics["mean_max"], \
@@ -49,6 +49,7 @@ def main():
     experimentID = sys.argv[2]
     SUTName = sys.argv[3]
     containerID = sys.argv[4]
+    hostID = sys.argv[5]
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Ram analyser")
@@ -60,10 +61,10 @@ def main():
     
     CassandraRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], "trial_ram") \
         .select("ram_min", "ram_max", "ram_q1", "ram_q2", "ram_q3", "ram_p95", "ram_median", "ram_num_data_points", "ram_mean", "ram_me", "trial_id", "ram_integral", "ram_mode", "ram_mode_freq") \
-        .where("experiment_id=? AND container_id=?", experimentID, containerID)
+        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
     CassandraRDD.cache()
     
-    query = createQuery(CassandraRDD, experimentID, containerID)
+    query = createQuery(CassandraRDD, experimentID, containerID, hostID)
 
     sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
     

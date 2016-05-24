@@ -46,11 +46,12 @@ def maxIOValues(dataRDD):
         queries.append({"device":d, "reads":maxReads, "writes":maxWrites, "total":maxTotal})
     return queries
 
-def createQueries(dataRDD, trialID, experimentID, containerID):
+def createQueries(dataRDD, trialID, experimentID, containerID, hostID):
     queries = []
     result = maxIOValues(dataRDD)
     for e in result:
-        queries.append({"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "device":e["device"], "reads":e["reads"], "writes":e["writes"], "total":e["total"]})
+        queries.append({"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "host_id":hostID, \
+                        "device":e["device"], "reads":e["reads"], "writes":e["writes"], "total":e["total"]})
     return queries
 
 def getAnalyserConf(SUTName):
@@ -63,6 +64,7 @@ def main():
     experimentID = sys.argv[2]
     SUTName = sys.argv[3]
     containerID = sys.argv[4]
+    hostID = sys.argv[5]
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
@@ -74,11 +76,11 @@ def main():
     
     dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable)\
             .select("device", "reads", "writes", "total") \
-            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .cache()
     
     # Generate queries for devices
-    queries = createQueries(dataRDD, trialID, experimentID, containerID)
+    queries = createQueries(dataRDD, trialID, experimentID, containerID, hostID)
     
     # Save to Cassandra
     sc.parallelize(queries).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))

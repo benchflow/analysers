@@ -8,6 +8,7 @@ SUT_NAME=camunda
 CONTAINER_ID=stats_camunda
 ANALYSERS_CONF=/test/conf/example/camunda.analysers.yml
 CASSANDRA_HOST=cassandra
+HOST_NAME=docker_host
 
 echo "Starting Python tests"
 
@@ -100,7 +101,8 @@ do
 	$TRIAL_ID \
 	$EXPERIMENT_ID \
 	$SUT_NAME \
-	$CONTAINER_ID
+	$CONTAINER_ID \
+	$HOST_NAME
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
@@ -120,7 +122,8 @@ do
 	$TRIAL_ID \
 	$EXPERIMENT_ID \
 	$SUT_NAME \
-	$CONTAINER_ID
+	$CONTAINER_ID \
+	$HOST_NAME
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi

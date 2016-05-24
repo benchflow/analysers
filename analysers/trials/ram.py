@@ -15,7 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-def createQuery(dataRDD, experimentID, trialID, containerID):
+def createQuery(dataRDD, experimentID, trialID, containerID, hostID):
     from commons import computeMode, computeMetrics
     
     mode = computeMode(dataRDD)
@@ -24,7 +24,7 @@ def createQuery(dataRDD, experimentID, trialID, containerID):
      
     metrics = computeMetrics(data)
     
-    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, \
+    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "host_id":hostID, \
               "ram_mode":mode[0], "ram_mode_freq":mode[1], "ram_median":metrics["median"], "ram_integral":metrics["integral"], \
               "ram_mean":metrics["mean"], "ram_num_data_points":metrics["num_data_points"], \
               "ram_min":metrics["min"], "ram_max":metrics["max"], "ram_sd":metrics["sd"], \
@@ -42,6 +42,7 @@ def main():
     experimentID = sys.argv[2]
     SUTName = sys.argv[3]
     containerID = sys.argv[4]
+    hostID = sys.argv[5]
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Ram trial analyser")
@@ -53,12 +54,12 @@ def main():
     
     dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
             .select("memory_usage") \
-            .where("trial_id=? AND experiment_id=? AND container_id=?", trialID, experimentID, containerID) \
+            .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .filter(lambda r: r["memory_usage"] is not None) \
             .map(lambda r: (r['memory_usage'], 1)) \
             .cache()
     
-    query = createQuery(dataRDD, experimentID, trialID, containerID)
+    query = createQuery(dataRDD, experimentID, trialID, containerID, hostID)
     
     sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
     

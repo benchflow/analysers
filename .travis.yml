@@ -7,7 +7,6 @@ language: bash
 branches:
   only:
     - dev
-    - refactored-for-CI
   except:
     - v-dev
 
