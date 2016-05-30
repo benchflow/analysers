@@ -122,10 +122,11 @@ def getAnalyserConf(SUTName):
  
 def main():
     # Takes arguments
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
-    containerID = sys.argv[4]
-    hostID = sys.argv[5]
+    args = json.loads(sys.argv[1])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
+    containerID = str(args["container_id"])
+    hostID = str(args["host_id"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("cpu analyser")

@@ -39,11 +39,11 @@ def getActiveCores(sc, cassandraKeyspace, srcTable, trialID, experimentID, conta
     
     else:
         nOfActiveCores = sc.cassandraTable(cassandraKeyspace, srcTable) \
-                .select("cpu_cores") \
+                .select("cpu_percpu_usage") \
                 .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
                 .first()
                 
-        nOfCpus = nOfActiveCores["cpu_cores"]
+        nOfCpus = len(nOfActiveCores["cpu_percpu_usage"])
         return nOfCpus
 
 def createQuery(dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCores):
@@ -114,11 +114,12 @@ def getAnalyserConf(SUTName):
 
 def main():
     # Takes arguments
-    trialID = sys.argv[1]
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
-    containerID = sys.argv[4]
-    hostID = sys.argv[5]
+    args = json.loads(sys.argv[1])
+    trialID = str(args["trial_id"])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
+    containerID = str(args["container_id"])
+    hostID = str(args["host_id"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Cpu analyser")

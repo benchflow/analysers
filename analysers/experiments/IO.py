@@ -15,7 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID):
+def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     from commons import computeMode, computeMetrics
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
@@ -50,11 +50,11 @@ def getAnalyserConf(SUTName):
 
 def main():        
     # Takes arguments
-    trialID = sys.argv[1]
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
-    containerID = sys.argv[4]
-    hostID = sys.argv[5]
+    args = json.loads(sys.argv[1])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
+    containerID = str(args["container_id"])
+    hostID = str(args["host_id"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
@@ -78,9 +78,9 @@ def main():
     
     for k in devices.keys():
         query = {}
-        query.update(createQuery("reads", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, trialID, containerID, hostID))
-        query.update(createQuery("writes", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, trialID, containerID, hostID))
-        query.update(createQuery("total", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, trialID, containerID, hostID))
+        query.update(createQuery("reads", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, containerID, hostID))
+        query.update(createQuery("writes", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, containerID, hostID))
+        query.update(createQuery("total", k, sc, analyserConf["cassandra_keyspace"], srcTable, experimentID, containerID, hostID))
         queries.append(query)
     
     sc.parallelize(queries).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))

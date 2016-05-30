@@ -27,7 +27,7 @@ do
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 for SCRIPT in "databaseSizeTest"
@@ -41,7 +41,7 @@ do
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 for SCRIPT in "IOTest"
@@ -55,7 +55,7 @@ do
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 for SCRIPT in "throughputTest"
@@ -69,7 +69,7 @@ do
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 for SCRIPT in "computeExperimentCoreMetricsTest"
@@ -83,10 +83,10 @@ do
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
-#echo "Starting Cassandra tests"
+echo "Starting Cassandra tests"
 
 for SCRIPT in "cpu" "ram" "IO" "databaseSize" "processDuration" "numberOfProcessInstances" "throughput"
 do 
@@ -98,15 +98,11 @@ do
     --files $ANALYSERS_CONF \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/trials/$SCRIPT.py \
-	$TRIAL_ID \
-	$EXPERIMENT_ID \
-	$SUT_NAME \
-	$CONTAINER_ID \
-	$HOST_NAME
+	'{"sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 for SCRIPT in "cpu" "ram" "IO" "databaseSize" "processDuration" "numberOfProcessInstances" "throughput"
@@ -119,15 +115,11 @@ do
     --files $ANALYSERS_CONF \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/experiments/$SCRIPT.py \
-	$TRIAL_ID \
-	$EXPERIMENT_ID \
-	$SUT_NAME \
-	$CONTAINER_ID \
-	$HOST_NAME
+	'{"sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 for SCRIPT in "cassandraTest"
@@ -141,7 +133,7 @@ do
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
-	echo #SCRIPT completed without errors
+	echo $SCRIPT completed without errors
 done
 
 exit 0

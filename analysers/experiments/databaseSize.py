@@ -15,7 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-def createQuery(dataRDD, experimentID, trialID):
+def createQuery(dataRDD, experimentID):
     from commons import computeMode, computeMetrics
     
     mode = computeMode(dataRDD)
@@ -36,9 +36,9 @@ def getAnalyserConf(SUTName):
 
 def main():
     # Takes arguments
-    trialID = sys.argv[1]
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
+    args = json.loads(sys.argv[1])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Number of process instances analyser")
@@ -55,7 +55,7 @@ def main():
             .map(lambda r: (r['size'], 1)) \
             .cache()
             
-    query = createQuery(dataRDD, experimentID, trialID)
+    query = createQuery(dataRDD, experimentID)
     
     sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
     

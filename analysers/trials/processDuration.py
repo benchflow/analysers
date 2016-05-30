@@ -39,10 +39,11 @@ def getAnalyserConf(SUTName):
     return getAnalyserConfiguration(SUTName)
 
 def main():
-    # Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-    trialID = sys.argv[1]
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
+    # Takes arguments
+    args = json.loads(sys.argv[1])
+    trialID = str(args["trial_id"])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Process duration analyser")

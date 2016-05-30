@@ -33,8 +33,9 @@ def getAnalyserConf(SUTName):
 
 def main():
     # Takes arguments
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
+    args = json.loads(sys.argv[1])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Process duration analyser")

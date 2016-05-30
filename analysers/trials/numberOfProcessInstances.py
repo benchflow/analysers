@@ -24,9 +24,10 @@ def getAnalyserConf(SUTName):
 
 def main():
     # Takes arguments
-    trialID = sys.argv[1]
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
+    args = json.loads(sys.argv[1])
+    trialID = str(args["trial_id"])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Number of process instances analyser")

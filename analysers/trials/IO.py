@@ -59,12 +59,13 @@ def getAnalyserConf(SUTName):
     return getAnalyserConfiguration(SUTName)
 
 def main():
-    # Takes arguments: Spark master, Cassandra host, Minio host, path of the files
-    trialID = sys.argv[1]
-    experimentID = sys.argv[2]
-    SUTName = sys.argv[3]
-    containerID = sys.argv[4]
-    hostID = sys.argv[5]
+    # Takes arguments
+    args = json.loads(sys.argv[1])
+    trialID = str(args["trial_id"])
+    experimentID = str(args["experiment_id"])
+    SUTName = str(args["sut_name"])
+    containerID = str(args["container_id"])
+    hostID = str(args["host_id"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
