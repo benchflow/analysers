@@ -28,6 +28,7 @@ do
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
+	sleep 5
 done
 
 for SCRIPT in "databaseSizeTest"
@@ -42,6 +43,7 @@ do
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
+	sleep 5
 done
 
 for SCRIPT in "IOTest"
@@ -56,20 +58,7 @@ do
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
-done
-
-for SCRIPT in "throughputTest"
-do 
-	$SPARK_HOME/bin/spark-submit \
-	--master $SPARK_MASTER \
-	--jars $PYSPARK_CASSANDRA_JAR_PATH \
-    --driver-class-path $PYSPARK_CASSANDRA_JAR_PATH \
-	--py-files $ANALYSERS_PATH/trials/throughput.py,$PYSPARK_CASSANDRA_JAR_PATH \
-	/test/sparkTests/$SCRIPT.py
-	if [ "$?" = "1" ]; then
-		exit 1
-	fi
-	echo $SCRIPT completed without errors
+	sleep 5
 done
 
 for SCRIPT in "computeExperimentCoreMetricsTest"
@@ -84,11 +73,12 @@ do
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
+	sleep 5
 done
 
 echo "Starting Cassandra tests"
 
-for SCRIPT in "cpu" "ram" "IO" "databaseSize" "processDuration" "numberOfProcessInstances" "throughput"
+for SCRIPT in "cpu" "ram" "IO" "databaseSize" "processDuration" "executionTime" "numberOfProcessInstances" "throughput"
 do 
 	$SPARK_HOME/bin/spark-submit \
 	--master $SPARK_MASTER \
@@ -98,14 +88,15 @@ do
     --files $ANALYSERS_CONF \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/trials/$SCRIPT.py \
-	'{"sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
+	'{"cassandra_keyspace":"benchflow", "sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
+	sleep 5
 done
 
-for SCRIPT in "cpu" "ram" "IO" "databaseSize" "processDuration" "numberOfProcessInstances" "throughput"
+for SCRIPT in "cpu" "ram" "IO" "databaseSize" "processDuration" "executionTime" "numberOfProcessInstances" "throughput"
 do 
 	$SPARK_HOME/bin/spark-submit \
 	--master $SPARK_MASTER \
@@ -115,11 +106,12 @@ do
     --files $ANALYSERS_CONF \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/experiments/$SCRIPT.py \
-	'{"sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
+	'{"cassandra_keyspace":"benchflow", "sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
+	sleep 5
 done
 
 for SCRIPT in "cassandraTest"
@@ -134,6 +126,7 @@ do
 		exit 1
 	fi
 	echo $SCRIPT completed without errors
+	sleep 5
 done
 
 exit 0

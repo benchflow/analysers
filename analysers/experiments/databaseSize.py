@@ -24,10 +24,11 @@ def createQuery(dataRDD, experimentID):
      
     metrics = computeMetrics(data)
     
-    return [{"experiment_id":experimentID, "size_mode":mode[0], "size_mode_freq":mode[1], "size_median":metrics["median"], \
-              "size_avg":metrics["mean"], "size_num_data_points":metrics["num_data_points"], \
+    return [{"experiment_id":experimentID, "size_mode":mode[0], "size_mode_freq":mode[1], \
+              "size_mean":metrics["mean"], "size_num_data_points":metrics["num_data_points"], \
               "size_min":metrics["min"], "size_max":metrics["max"], "size_sd":metrics["sd"], \
               "size_q1":metrics["q1"], "size_q2":metrics["q2"], "size_q3":metrics["q3"], "size_p95":metrics["p95"], \
+              "size_p90":metrics["p90"], "size_p99":metrics["p99"], "size_percentiles":metrics["percentiles"], \
               "size_me":metrics["me"], "size_ci095_min":metrics["ci095_min"], "size_ci095_max":metrics["ci095_max"]}]
 
 def getAnalyserConf(SUTName):
@@ -39,6 +40,7 @@ def main():
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
     SUTName = str(args["sut_name"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Number of process instances analyser")
@@ -48,7 +50,7 @@ def main():
     srcTable = "trial_byte_size"
     destTable = "exp_byte_size"
     
-    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
+    dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("size") \
             .where("experiment_id=?", experimentID) \
             .filter(lambda r: r['size'] is not None) \
@@ -57,7 +59,7 @@ def main():
             
     query = createQuery(dataRDD, experimentID)
     
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     
 if __name__ == '__main__':
     main()

@@ -9,14 +9,26 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
-def createQuery(dataRDD, experimentID, trialID, nToIgnore):
-    from commons import cutNInitialProcesses
+def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID):
+    queries = []
     
-    data = cutNInitialProcesses(dataRDD, nToIgnore)
+    dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
+            .select("process_definition_id", "source_process_instance_id", "to_ignore", "start_time", "duration") \
+            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .filter(lambda r: r["process_definition_id"] is not None and r["to_ignore"] is False) \
+            .cache()
     
-    numberOfInstances = len(data)
+    numberOfInstances = dataRDD.count()
     
-    return [{"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":numberOfInstances}]
+    queries.append({"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":numberOfInstances, "process_definition_id": "all"})
+    
+    processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
+    
+    for process in processes:
+        numberOfInstances = dataRDD.filter(lambda a: a["process_definition_id"] == process).count()
+        queries.append({"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":numberOfInstances, "process_definition_id": process})
+    
+    return queries
 
 def getAnalyserConf(SUTName):
     from commons import getAnalyserConfiguration
@@ -28,6 +40,7 @@ def main():
     trialID = str(args["trial_id"])
     experimentID = str(args["experiment_id"])
     SUTName = str(args["sut_name"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Number of process instances analyser")
@@ -36,15 +49,9 @@ def main():
     analyserConf = getAnalyserConf(SUTName)
     srcTable = "process"
     destTable = "trial_number_of_process_instances"
-    
-    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
-            .select("process_definition_id", "source_process_instance_id", "start_time", "duration") \
-            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-            .filter(lambda r: r["process_definition_id"] is not None) \
-            .cache()
         
-    query = createQuery(dataRDD, experimentID, trialID, analyserConf["initial_processes_cut"])
+    query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID)
     
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     
 if __name__ == '__main__': main()

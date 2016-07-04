@@ -32,6 +32,7 @@ def main():
     trialID = str(args["trial_id"])
     experimentID = str(args["experiment_id"])
     SUTName = str(args["sut_name"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Database size analyser")
@@ -41,13 +42,13 @@ def main():
     srcTable = "database_sizes"
     destTable = "trial_byte_size"
     
-    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
+    dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("size") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
     
     query = createQuery(dataRDD, experimentID, trialID)
     
     # Saves to Cassandra
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     
 if __name__ == '__main__': main()

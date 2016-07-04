@@ -20,7 +20,7 @@ def testOneElement(sc):
     dataRDD = sc.parallelize(data)
         
     result = computeThroughput(dataRDD)
-    assert result == (1, 1), "Throughput value incorrect, expected 1, 1"
+    assert result == 1, "Throughput value incorrect, expected 1"
     
 def testTwoElements(sc):
     from throughput import computeThroughput
@@ -31,7 +31,7 @@ def testTwoElements(sc):
     dataRDD = sc.parallelize(data)
         
     result = computeThroughput(dataRDD)
-    assert result == (0.5, 4), "Throughput value incorrect, expected 0.5, 4"
+    assert result == 0.5, "Throughput value incorrect, expected 0.5"
     
 def testSomeNullTimes(sc):
     from throughput import computeThroughput
@@ -42,7 +42,7 @@ def testSomeNullTimes(sc):
     dataRDD = sc.parallelize(data)
         
     result = computeThroughput(dataRDD)
-    assert result == (0.5, 4), "Throughput value incorrect, expected 0.5, 4"
+    assert result == 0.5, "Throughput value incorrect, expected 0.5"
     
 def testAllTimesNull(sc):
     from throughput import computeThroughput
@@ -53,7 +53,7 @@ def testAllTimesNull(sc):
     dataRDD = sc.parallelize(data)
         
     result = computeThroughput(dataRDD)
-    assert result == (None, None), "Throughput value incorrect, expected None, None"
+    assert result == None, "Throughput value incorrect, expected None"
            
 def main():
     # Set configuration for spark context

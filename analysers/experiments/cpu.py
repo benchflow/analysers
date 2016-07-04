@@ -26,10 +26,11 @@ def sortAndGetCore(CassandraRDD, field, asc, i):
 
 def computeExperimentCoreMetrics(CassandraRDD, i):
     if CassandraRDD.isEmpty():
-        return {"median_min":None, "median_max":None, \
-              "min":None, "max":None, "q1_min":None, \
+        return {"min":None, "max":None, "q1_min":None, \
               "q1_max":None, "q2_min":None, "q2_max":None, \
+              "p90_max":None, "p90_min":None, \
               "p95_max":None, "p95_min":None, \
+              "p99_max":None, "p99_min":None, \
               "q3_min":None, "q3_max":None, "weighted_avg":None}
     
     dataMin = sortAndGetCore(CassandraRDD, "cpu_min", 1, i)
@@ -40,10 +41,12 @@ def computeExperimentCoreMetrics(CassandraRDD, i):
     q2Max = sortAndGetCore(CassandraRDD, "cpu_q2", 0, i)
     q3Min = sortAndGetCore(CassandraRDD, "cpu_q3", 1, i)
     q3Max = sortAndGetCore(CassandraRDD, "cpu_q3", 0, i)
+    p90Min = sortAndGetCore(CassandraRDD, "cpu_p90", 1, i)
+    p90Max = sortAndGetCore(CassandraRDD, "cpu_p90", 0, i)
     p95Min = sortAndGetCore(CassandraRDD, "cpu_p95", 1, i)
     p95Max = sortAndGetCore(CassandraRDD, "cpu_p95", 0, i)
-    medianMin = sortAndGetCore(CassandraRDD, "cpu_median", 1, i)
-    medianMax = sortAndGetCore(CassandraRDD, "cpu_median", 0, i)
+    p99Min = sortAndGetCore(CassandraRDD, "cpu_p99", 1, i)
+    p99Max = sortAndGetCore(CassandraRDD, "cpu_p99", 0, i)
     
     someMeanIsNull = CassandraRDD.map(lambda x: x["cpu_mean"][i] is None) \
         .reduce(lambda a, b: a or b)
@@ -59,14 +62,23 @@ def computeExperimentCoreMetrics(CassandraRDD, i):
         
         weightedMean = weightedSum/float(weightSum)
     
-    return {"median_min":medianMin, "median_max":medianMax, \
-              "min":dataMin, "max":dataMax, "q1_min":q1Min, \
+    return {"min":dataMin, "max":dataMax, "q1_min":q1Min, \
               "q1_max":q1Max, "q2_min":q2Min, "q2_max":q2Max, \
+              "p90_max":p90Max, "p90_min":p90Min, \
               "p95_max":p95Max, "p95_min":p95Min, \
+              "p99_max":p99Max, "p99_min":p99Min, \
               "q3_min":q3Min, "q3_max":q3Max, "weighted_avg":weightedMean}
  
-def createQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores):
-    from commons import computeExperimentMetrics, computeMetrics
+def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID):
+    from commons import computeExperimentMetrics, computeMetrics, computeLevene
+    
+    CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
+        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
+    CassandraRDD.cache()
+    
+    CassandraRDDFirst = CassandraRDD.first()
+    nOfActiveCores = CassandraRDDFirst["cpu_cores"]
     
     metrics = computeExperimentMetrics(CassandraRDD, "cpu")
     
@@ -74,24 +86,39 @@ def createQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores)
 
     integralMetrics = computeMetrics(data)
     
+    levenePValue = computeLevene(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID, "cpu_percent_usage")
+    
     return [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "cpu_cores":nOfActiveCores, \
-              "cpu_median_min":metrics["median_min"], "cpu_median_max":metrics["median_max"], \
               "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_q1_min":metrics["q1_min"], \
               "cpu_q1_max":metrics["q1_max"], "cpu_q2_min":metrics["q2_min"], "cpu_q2_max":metrics["q2_max"], \
+              "cpu_p90_max":metrics["p90_max"], "cpu_p90_min":metrics["p90_min"], \
               "cpu_p95_max":metrics["p95_max"], "cpu_p95_min":metrics["p95_min"], \
+              "cpu_p99_max":metrics["p99_max"], "cpu_p99_min":metrics["p99_min"], \
               "cpu_q3_min":metrics["q3_min"], "cpu_q3_max":metrics["q3_max"], "cpu_weighted_avg":metrics["weighted_avg"], \
               "cpu_best": metrics["best"], "cpu_worst": metrics["worst"], "cpu_average": metrics["average"], \
-              "cpu_integral_median":integralMetrics["median"], "cpu_integral_avg":integralMetrics["mean"], \
               "cpu_integral_min":integralMetrics["min"], "cpu_integral_max":integralMetrics["max"], "cpu_integral_sd":integralMetrics["sd"], \
               "cpu_integral_q1":integralMetrics["q1"], "cpu_integral_q2":integralMetrics["q2"], "cpu_integral_q3":integralMetrics["q3"], \
-              "cpu_integral_p95":integralMetrics["p95"], "cpu_integral_me":integralMetrics["me"], \
-              "cpu_integral_ci095_min":integralMetrics["ci095_min"], "cpu_integral_ci095_max":integralMetrics["ci095_max"]}]
+              "cpu_integral_p90":integralMetrics["p90"], "cpu_integral_p95":integralMetrics["p95"], "cpu_integral_p99":integralMetrics["p99"], \
+              "cpu_integral_me":integralMetrics["me"], "cpu_integral_mean":integralMetrics["mean"], \
+              "cpu_integral_ci095_min":integralMetrics["ci095_min"], "cpu_integral_ci095_max":integralMetrics["ci095_max"], \
+              "cpu_levene_test_mean":levenePValue["levene_mean"], "cpu_levene_test_median":levenePValue["levene_median"], "cpu_levene_test_trimmed":levenePValue["levene_trimmed"], \
+              "cpu_levene_test_mean_stat":levenePValue["levene_mean_stat"], "cpu_levene_test_median_stat":levenePValue["levene_median_stat"], "cpu_levene_test_trimmed_stat":levenePValue["levene_trimmed_stat"], \
+              "cpu_variation_coefficient": metrics["variation_coefficient"]}]
     
-def createCoreQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores):
-    nOfCores = len(CassandraRDD.first()["cpu_mean"])
+def createCoreQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
+    from commons import getHostCores
+    
+    CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
+        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_cores") \
+        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
+    CassandraRDD.cache()
+    
+    CassandraRDDFirst = CassandraRDD.first()
+    nOfActiveCores = CassandraRDDFirst["cpu_cores"]
+                
+    nOfCores = getHostCores(sc, cassandraKeyspace, hostID)
     
     query = [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "cpu_cores":nOfActiveCores, \
-              "cpu_median_min":[None]*nOfCores, "cpu_median_max":[None]*nOfCores, \
               "cpu_min":[None]*nOfCores, "cpu_max":[None]*nOfCores, "cpu_q1_min":[None]*nOfCores, \
               "cpu_q1_max":[None]*nOfCores, "cpu_q2_min":[None]*nOfCores, "cpu_q2_max":[None]*nOfCores, \
               "cpu_p95_max":[None]*nOfCores, "cpu_p95_min":[None]*nOfCores, \
@@ -101,8 +128,6 @@ def createCoreQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCo
         coreMetrics = computeExperimentCoreMetrics(CassandraRDD, i)
         
         query[0]["cpu_weighted_avg"][i] = coreMetrics["weighted_avg"]
-        query[0]["cpu_median_min"][i] = coreMetrics["median_min"]
-        query[0]["cpu_median_max"][i] = coreMetrics["median_max"]
         query[0]["cpu_min"][i] = coreMetrics["min"]
         query[0]["cpu_max"][i] = coreMetrics["max"]
         query[0]["cpu_q1_min"][i] = coreMetrics["q1_min"]
@@ -127,39 +152,28 @@ def main():
     SUTName = str(args["sut_name"])
     containerID = str(args["container_id"])
     hostID = str(args["host_id"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("cpu analyser")
     sc = CassandraSparkContext(conf=conf)
     
     analyserConf = getAnalyserConf(SUTName)
+    dataTable = "environment_data"
     srcTable = "trial_cpu"
     srcTableCore = "trial_cpu_core"
     destTable = "exp_cpu"
     destTableCores = "exp_cpu_core"
     
-    CassandraRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
-        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p95", "cpu_median", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
-        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
-    CassandraRDD.cache()
-    
-    CassandraRDDFirst = CassandraRDD.first()
-    nOfActiveCores = CassandraRDDFirst["cpu_cores"]
-    
-    query = createQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores)
+    query = createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID)
 
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
 
     #####################################################
     
-    CassandraRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTableCore) \
-        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p95", "cpu_median", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_cores") \
-        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
-    CassandraRDD.cache()
+    query = createCoreQuery(sc, cassandraKeyspace, srcTableCore, experimentID, containerID, hostID)
     
-    query = createCoreQuery(CassandraRDD, experimentID, containerID, hostID, nOfActiveCores)
-    
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTableCores, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTableCores, ttl=timedelta(hours=1))
     
 if __name__ == '__main__':
     main()

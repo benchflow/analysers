@@ -14,8 +14,6 @@ def testEmpty(sc):
     assert result["mode_max"] is None, "Experiment metric value incorrect, expected None"
     assert result["mode_min_freq"] is None, "Experiment metric value incorrect, expected None"
     assert result["mode_max_freq"] is None, "Experiment metric value incorrect, expected None"
-    assert result["median_min"] is None, "Experiment metric value incorrect, expected None"
-    assert result["median_max"] is None, "Experiment metric value incorrect, expected None"
     assert result["mean_min"] is None, "Experiment metric value incorrect, expected None"
     assert result["mean_max"] is None, "Experiment metric value incorrect, expected None"
     assert result["min"] is None, "Experiment metric value incorrect, expected None"
@@ -36,8 +34,9 @@ def testEmpty(sc):
 def testOneElement(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
-    data = [{"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo"}]
+    data = [{"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}]
     
     dataRDD = sc.parallelize(data)
         
@@ -47,8 +46,6 @@ def testOneElement(sc):
     assert result["mode_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_min_freq"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_max_freq"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_min"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["min"] == 1, "Experiment metric value incorrect, expected 1"
@@ -69,10 +66,12 @@ def testOneElement(sc):
 def testTwoElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
-    data = [{"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo"}, \
-            {"data_mode":[2], "data_mode_freq":1, "data_median":2, "data_mean":2, "data_min":2, "data_max":2, "data_q1":2, \
-             "data_q2":2, "data_q3":2, "data_p95":2, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo"}]
+    data = [{"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[2], "data_mode_freq":1, "data_mean":2, "data_min":2, "data_max":2, "data_q1":2, \
+             "data_q2":2, "data_q3":2, "data_p95":2, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}]
     
     dataRDD = sc.parallelize(data)
         
@@ -82,8 +81,6 @@ def testTwoElements(sc):
     assert result["mode_max"] == 2, "Experiment metric value incorrect, expected 2"
     assert result["mode_min_freq"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_max_freq"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_min"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_max"] == 2, "Experiment metric value incorrect, expected 2"
     assert result["mean_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_max"] == 2, "Experiment metric value incorrect, expected 2"
     assert result["min"] == 1, "Experiment metric value incorrect, expected 1"
@@ -104,12 +101,15 @@ def testTwoElements(sc):
 def testThreeElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
-    data = [{"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo"}, \
-            {"data_mode":[2], "data_mode_freq":1, "data_median":2, "data_mean":2, "data_min":2, "data_max":2, "data_q1":2, \
-             "data_q2":2, "data_q3":2, "data_p95":2, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo"}, \
-            {"data_mode":[3], "data_mode_freq":1, "data_median":3, "data_mean":3, "data_min":3, "data_max":3, "data_q1":3, \
-             "data_q2":3, "data_q3":3, "data_p95":3, "data_me":0, "data_num_data_points":1, "trial_id":"foo_3", "experiment_id":"foo"}]
+    data = [{"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[2], "data_mode_freq":1, "data_mean":2, "data_min":2, "data_max":2, "data_q1":2, \
+             "data_q2":2, "data_q3":2, "data_p95":2, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[3], "data_mode_freq":1, "data_mean":3, "data_min":3, "data_max":3, "data_q1":3, \
+             "data_q2":3, "data_q3":3, "data_p95":3, "data_me":0, "data_num_data_points":1, "trial_id":"foo_3", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}]
     
     dataRDD = sc.parallelize(data)
         
@@ -119,8 +119,6 @@ def testThreeElements(sc):
     assert result["mode_max"] == 3, "Experiment metric value incorrect, expected 3"
     assert result["mode_min_freq"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_max_freq"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_min"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_max"] == 3, "Experiment metric value incorrect, expected 3"
     assert result["mean_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_max"] == 3, "Experiment metric value incorrect, expected 3"
     assert result["min"] == 1, "Experiment metric value incorrect, expected 1"
@@ -141,14 +139,18 @@ def testThreeElements(sc):
 def testFourElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
-    data = [{"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo"}, \
-            {"data_mode":[2], "data_mode_freq":1, "data_median":2, "data_mean":2, "data_min":2, "data_max":2, "data_q1":2, \
-             "data_q2":2, "data_q3":2, "data_p95":2, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo"}, \
-            {"data_mode":[3], "data_mode_freq":1, "data_median":3, "data_mean":3, "data_min":3, "data_max":3, "data_q1":3, \
-             "data_q2":3, "data_q3":3, "data_p95":3, "data_me":0, "data_num_data_points":1, "trial_id":"foo_3", "experiment_id":"foo"}, \
-            {"data_mode":[4], "data_mode_freq":1, "data_median":4, "data_mean":4, "data_min":4, "data_max":4, "data_q1":4, \
-             "data_q2":4, "data_q3":4, "data_p95":4, "data_me":0, "data_num_data_points":1, "trial_id":"foo_4", "experiment_id":"foo"}]
+    data = [{"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[2], "data_mode_freq":1, "data_mean":2, "data_min":2, "data_max":2, "data_q1":2, \
+             "data_q2":2, "data_q3":2, "data_p95":2, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[3], "data_mode_freq":1, "data_mean":3, "data_min":3, "data_max":3, "data_q1":3, \
+             "data_q2":3, "data_q3":3, "data_p95":3, "data_me":0, "data_num_data_points":1, "trial_id":"foo_3", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[4], "data_mode_freq":1, "data_mean":4, "data_min":4, "data_max":4, "data_q1":4, \
+             "data_q2":4, "data_q3":4, "data_p95":4, "data_me":0, "data_num_data_points":1, "trial_id":"foo_4", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}]
     
     dataRDD = sc.parallelize(data)
         
@@ -158,8 +160,6 @@ def testFourElements(sc):
     assert result["mode_max"] == 4, "Experiment metric value incorrect, expected 4"
     assert result["mode_min_freq"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_max_freq"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_min"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_max"] == 4, "Experiment metric value incorrect, expected 4"
     assert result["mean_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_max"] == 4, "Experiment metric value incorrect, expected 4"
     assert result["min"] == 1, "Experiment metric value incorrect, expected 1"
@@ -180,12 +180,15 @@ def testFourElements(sc):
 def testAllSameElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
-    data = [{"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo"}, \
-            {"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo"}, \
-            {"data_mode":[1], "data_mode_freq":1, "data_median":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
-             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_3", "experiment_id":"foo"}]
+    data = [{"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_1", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_2", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}, \
+            {"data_mode":[1], "data_mode_freq":1, "data_mean":1, "data_min":1, "data_max":1, "data_q1":1, \
+             "data_q2":1, "data_q3":1, "data_p95":1, "data_me":0, "data_num_data_points":1, "trial_id":"foo_3", "experiment_id":"foo", \
+             "data_p90":1, "data_p99":1}]
     
     dataRDD = sc.parallelize(data)
         
@@ -195,8 +198,6 @@ def testAllSameElements(sc):
     assert result["mode_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_min_freq"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mode_max_freq"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_min"] == 1, "Experiment metric value incorrect, expected 1"
-    assert result["median_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["mean_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["min"] == 1, "Experiment metric value incorrect, expected 1"

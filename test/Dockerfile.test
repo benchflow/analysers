@@ -1,4 +1,4 @@
-FROM gettyimages/spark
+FROM gettyimages/spark:1.6.1-hadoop-2.6
 
 ENV PYSPARK_PYTHON python2.7
 ENV PYTHONPATH /analysers/commons/

@@ -13,51 +13,35 @@ from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 from pyspark import SparkFiles
 
-def computeThroughput(dataRDD):
-    if(dataRDD.isEmpty()):
-        return (None, None)
+def createQuery(sc, cassandraKeyspace, experimentID, trialID):
+    queries = []
     
-    data = dataRDD.map(lambda r: (r['start_time'], r['end_time'])) \
-            .collect()
+    execTimes = sc.cassandraTable(cassandraKeyspace, "trial_execution_time")\
+            .select("process_definition_id", "execution_time") \
+            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .cache()
+    numProcesses = sc.cassandraTable(cassandraKeyspace, "trial_number_of_process_instances")\
+            .select("process_definition_id", "number_of_process_instances") \
+            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .cache()
     
-    smallest = None
-    for d in data:
-        t = d[0]
-        if smallest == None:
-            smallest = t
-        elif t != None:
-            if t < smallest:
-                smallest = t
-            
-    largest = None
-    for d in data:
-        t = d[1]
-        if largest == None:
-            largest = t
-        elif t != None:
-            if t > largest:
-                largest = t
+    ex = execTimes.filter(lambda r: r["process_definition_id"] == "all").first()["execution_time"]
+    npr = numProcesses.filter(lambda r: r["process_definition_id"] == "all").first()["number_of_process_instances"]
     
-    if largest is None or smallest is None:
-        return (None, None)
+    tp = npr/(ex*1.0)
     
-    delta = largest - smallest
-    delta = delta.total_seconds()
+    queries.append({"experiment_id":experimentID, "trial_id":trialID, "process_definition_id":"all", "throughput":tp})
     
-    tp = len(data)/float(delta)
+    processes = execTimes.map(lambda a: a["process_definition_id"]).distinct().collect()
     
-    return (tp, delta)
-
-def createQuery(sc, dataRDD, experimentID, trialID, nToIgnore):
-    from commons import cutNInitialProcesses
-    
-    data = cutNInitialProcesses(dataRDD, nToIgnore)
+    for process in processes:
+        npr = numProcesses.filter(lambda r: r["process_definition_id"] == process).first()["number_of_process_instances"]
         
-    dataRDD = sc.parallelize(data)
+        tp = npr/(ex*1.0)
     
-    tp = computeThroughput(dataRDD)
-    
-    return [{"experiment_id":experimentID, "trial_id":trialID, "throughput":tp[0], "execution_time":tp[1]}]
+        queries.append({"experiment_id":experimentID, "trial_id":trialID, "process_definition_id":process, "throughput":tp})
+        
+    return queries
 
 def getAnalyserConf(SUTName):
     from commons import getAnalyserConfiguration
@@ -69,23 +53,17 @@ def main():
     trialID = str(args["trial_id"])
     experimentID = str(args["experiment_id"])
     SUTName = str(args["sut_name"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
-    conf = SparkConf().setAppName("Process duration trial analyser")
+    conf = SparkConf().setAppName("Process throughput trial analyser")
     sc = CassandraSparkContext(conf=conf)
     
     analyserConf = getAnalyserConf(SUTName)
-    srcTable = "process"
     destTable = "trial_throughput"
-    
-    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable)\
-            .select("process_definition_id", "source_process_instance_id", "start_time", "end_time", "duration") \
-            .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-            .filter(lambda r: r["process_definition_id"] is not None) \
-            .cache()
             
-    query = createQuery(sc, dataRDD, experimentID, trialID, analyserConf["initial_processes_cut"])
+    query = createQuery(sc, cassandraKeyspace, experimentID, trialID)
     
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     
 if __name__ == '__main__': main()

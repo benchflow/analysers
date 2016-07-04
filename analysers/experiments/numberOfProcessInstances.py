@@ -18,17 +18,25 @@ from pyspark import SparkConf
 def createQuery(dataRDD, experimentID):
     from commons import computeMode, computeMetrics
     
-    mode = computeMode(dataRDD)
-
-    data = dataRDD.map(lambda x: x[0]).collect()
-     
-    metrics = computeMetrics(data)
+    queries = []
     
-    return [{"experiment_id":experimentID, "number_of_process_instances_mode":mode[0], "number_of_process_instances_mode_freq":mode[1], "number_of_process_instances_median":metrics["median"], \
-              "number_of_process_instances_avg":metrics["mean"], "number_of_process_instances_num_data_points":metrics["num_data_points"], \
-              "number_of_process_instances_min":metrics["min"], "number_of_process_instances_max":metrics["max"], "number_of_process_instances_sd":metrics["sd"], \
-              "number_of_process_instances_q1":metrics["q1"], "number_of_process_instances_q2":metrics["q2"], "number_of_process_instances_q3":metrics["q3"], "number_of_process_instances_p95":metrics["p95"], \
-              "number_of_process_instances_me":metrics["me"], "number_of_process_instances_ci095_min":metrics["ci095_min"], "number_of_process_instances_ci095_max":metrics["ci095_max"]}]
+    processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
+    
+    for process in processes:
+        mode = computeMode(dataRDD.filter(lambda a: a["process_definition_id"] == process).map(lambda r: (r['number_of_process_instances'], 1)))
+    
+        data = dataRDD.filter(lambda r: r['process_definition_id'] == process).map(lambda r: r['number_of_process_instances']).collect()
+         
+        metrics = computeMetrics(data)
+        
+        queries.append({"process_definition_id": process, "experiment_id":experimentID, "number_of_process_instances_mode":mode[0], "number_of_process_instances_mode_freq":mode[1], \
+                  "number_of_process_instances_mean":metrics["mean"], "number_of_process_instances_num_data_points":metrics["num_data_points"], \
+                  "number_of_process_instances_min":metrics["min"], "number_of_process_instances_max":metrics["max"], "number_of_process_instances_sd":metrics["sd"], \
+                  "number_of_process_instances_q1":metrics["q1"], "number_of_process_instances_q2":metrics["q2"], "number_of_process_instances_q3":metrics["q3"], "number_of_process_instances_p95":metrics["p95"], \
+                  "number_of_process_instances_p90":metrics["p90"], "number_of_process_instances_p99":metrics["p99"], "number_of_process_instances_percentiles":metrics["percentiles"], \
+                  "number_of_process_instances_me":metrics["me"], "number_of_process_instances_ci095_min":metrics["ci095_min"], "number_of_process_instances_ci095_max":metrics["ci095_max"]})
+        
+    return queries
 
 def getAnalyserConf(SUTName):
     from commons import getAnalyserConfiguration
@@ -39,6 +47,7 @@ def main():
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
     SUTName = str(args["sut_name"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Number of process instances analyser")
@@ -48,16 +57,15 @@ def main():
     srcTable = "trial_number_of_process_instances"
     destTable = "exp_number_of_process_instances"
     
-    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable) \
-            .select("number_of_process_instances") \
+    dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
+            .select("number_of_process_instances", "process_definition_id") \
             .where("experiment_id=?", experimentID) \
             .filter(lambda r: r['number_of_process_instances'] is not None) \
-            .map(lambda r: (r['number_of_process_instances'], 1)) \
             .cache()
             
     query = createQuery(dataRDD, experimentID)
     
-    sc.parallelize(query).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     
 if __name__ == '__main__':
     main()

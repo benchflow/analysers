@@ -66,6 +66,7 @@ def main():
     SUTName = str(args["sut_name"])
     containerID = str(args["container_id"])
     hostID = str(args["host_id"])
+    cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
@@ -75,7 +76,7 @@ def main():
     srcTable = "io_data"
     destTable = "trial_io"
     
-    dataRDD = sc.cassandraTable(analyserConf["cassandra_keyspace"], srcTable)\
+    dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("device", "reads", "writes", "total") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .cache()
@@ -84,6 +85,6 @@ def main():
     queries = createQueries(dataRDD, trialID, experimentID, containerID, hostID)
     
     # Save to Cassandra
-    sc.parallelize(queries).saveToCassandra(analyserConf["cassandra_keyspace"], destTable, ttl=timedelta(hours=1))
+    sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     
 if __name__ == '__main__': main()

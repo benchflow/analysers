@@ -6,7 +6,6 @@ class MetricsTestCase(unittest.TestCase):
         data = []
         metrics = computeMetrics(data)
         self.assertTrue(metrics["mean"] is None)
-        self.assertTrue(metrics["median"] is None)
         self.assertTrue(metrics["integral"] is None)
         self.assertTrue(metrics["num_data_points"] == 0)
         self.assertTrue(metrics["min"] is None)
@@ -24,7 +23,6 @@ class MetricsTestCase(unittest.TestCase):
         data = [1]
         metrics = computeMetrics(data)
         self.assertTrue(metrics["mean"] == 1)
-        self.assertTrue(metrics["median"] == 1)
         self.assertTrue(metrics["integral"] == 0)
         self.assertTrue(metrics["num_data_points"] == 1)
         self.assertTrue(metrics["min"] == 1)
@@ -42,7 +40,6 @@ class MetricsTestCase(unittest.TestCase):
         data = [2, 4, 2, 4]
         metrics = computeMetrics(data)
         self.assertTrue(metrics["mean"] == 3)
-        self.assertTrue(metrics["median"] == 3)
         self.assertTrue(metrics["integral"] == 9)
         self.assertTrue(metrics["num_data_points"] == 4)
         self.assertTrue(metrics["min"] == 2)
@@ -60,7 +57,6 @@ class MetricsTestCase(unittest.TestCase):
         data = [2, 2, 2]
         metrics = computeMetrics(data)
         self.assertTrue(metrics["mean"] == 2)
-        self.assertTrue(metrics["median"] == 2)
         self.assertTrue(metrics["integral"] == 4)
         self.assertTrue(metrics["num_data_points"] == 3)
         self.assertTrue(metrics["min"] == 2)
@@ -80,7 +76,6 @@ class MetricsTestCase(unittest.TestCase):
             data.append(2)
         metrics = computeMetrics(data)
         self.assertTrue(metrics["mean"] == 2)
-        self.assertTrue(metrics["median"] == 2)
         self.assertTrue(metrics["integral"] == 19998)
         self.assertTrue(metrics["num_data_points"] == 10000)
         self.assertTrue(metrics["min"] == 2)

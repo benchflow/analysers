@@ -31,7 +31,6 @@ def main():
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_byte_size")\
@@ -39,7 +38,6 @@ def main():
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_number_of_process_instances")\
@@ -47,23 +45,20 @@ def main():
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .count()
             
-    print(data)
-    assert data is not None and data == 1, "Test failed, missing data on Cassandra"
+    assert data is not None and data == 3, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_throughput")\
             .select("trial_id") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .count()
             
-    print(data)
-    assert data is not None and data == 1, "Test failed, missing data on Cassandra"
+    assert data is not None and data == 3, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_ram")\
             .select("trial_id") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_cpu_core")\
@@ -71,7 +66,6 @@ def main():
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_cpu")\
@@ -79,7 +73,6 @@ def main():
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "trial_process_duration")\
@@ -87,15 +80,13 @@ def main():
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .count()
             
-    print(data)
-    assert data is not None and data == 1, "Test failed, missing data on Cassandra"
+    assert data is not None and data == 3, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_io")\
             .select("experiment_id") \
             .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_byte_size")\
@@ -103,7 +94,6 @@ def main():
             .where("experiment_id=?", experimentID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_number_of_process_instances")\
@@ -111,23 +101,20 @@ def main():
             .where("experiment_id=?", experimentID) \
             .count()
             
-    print(data)
-    assert data is not None and data == 1, "Test failed, missing data on Cassandra"
+    assert data is not None and data == 3, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_throughput")\
             .select("experiment_id") \
             .where("experiment_id=?", experimentID) \
             .count()
             
-    print(data)
-    assert data is not None and data == 1, "Test failed, missing data on Cassandra"
+    assert data is not None and data == 3, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_ram")\
             .select("experiment_id") \
             .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_cpu_core")\
@@ -135,7 +122,6 @@ def main():
             .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_cpu")\
@@ -143,7 +129,6 @@ def main():
             .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
             .count()
             
-    print(data)
     assert data is not None and data == 1, "Test failed, missing data on Cassandra"
     
     data = sc.cassandraTable(cassandraKeyspace, "exp_process_duration")\
@@ -151,8 +136,7 @@ def main():
             .where("experiment_id=?", experimentID) \
             .count()
             
-    print(data)
-    assert data is not None and data == 1, "Test failed, missing data on Cassandra"
+    assert data is not None and data == 3, "Test failed, missing data on Cassandra"
     
     print("Cassandra tests passed")
     
