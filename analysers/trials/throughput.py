@@ -43,10 +43,6 @@ def createQuery(sc, cassandraKeyspace, experimentID, trialID):
         
     return queries
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -59,7 +55,6 @@ def main():
     conf = SparkConf().setAppName("Process throughput trial analyser")
     sc = CassandraSparkContext(conf=conf)
     
-    analyserConf = getAnalyserConf(SUTName)
     destTable = "trial_throughput"
             
     query = createQuery(sc, cassandraKeyspace, experimentID, trialID)

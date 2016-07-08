@@ -82,10 +82,6 @@ def createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, container
               "ram_p90":metrics["p90"], "ram_p99":metrics["p99"], "ram_percentiles":metrics["percentiles"]}]
     return query
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     #Takes arguments
     args = json.loads(sys.argv[1])
@@ -100,7 +96,6 @@ def main():
     conf = SparkConf().setAppName("Ram trial analyser")
     sc = CassandraSparkContext(conf=conf)
     
-    analyserConf = getAnalyserConf(SUTName)
     srcTable = "environment_data"
     destTable = "trial_ram"
     

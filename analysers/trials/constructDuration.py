@@ -61,10 +61,6 @@ def createQuery(sc, dataRDD, experimentID, trialID):
 
     return queries
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -76,8 +72,7 @@ def main():
     # Set configuration for spark context
     conf = SparkConf().setAppName("Construct duration analyser")
     sc = CassandraSparkContext(conf=conf)
-    
-    #analyserConf = getAnalyserConf(SUTName)
+
     srcTable = "construct"
     destTable = "trial_construct_duration"
     

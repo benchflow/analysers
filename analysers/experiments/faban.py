@@ -187,11 +187,6 @@ def createCustomStatsQuery(sc, cassandraKeyspace, srcTable, experimentID, contai
             
     return (absQueries, statQueries)
         
-    
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -204,9 +199,7 @@ def main():
     # Set configuration for spark context
     conf = SparkConf().setAppName("Faban analyser")
     sc = CassandraSparkContext(conf=conf)
-    
-    #analyserConf = getAnalyserConf(SUTName)
-    
+
     query = createTotalOpsQuery(sc, cassandraKeyspace, "faban_driver_summary", experimentID, containerID, hostID)
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_total_ops", ttl=timedelta(hours=1))
     

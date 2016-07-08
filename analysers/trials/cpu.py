@@ -113,10 +113,6 @@ def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, cont
         
     return query
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -131,7 +127,6 @@ def main():
     conf = SparkConf().setAppName("Cpu analyser")
     sc = CassandraSparkContext(conf=conf)
     
-    analyserConf = getAnalyserConf(SUTName)
     srcTable = "environment_data"
     destTable = "trial_cpu"
     destTableCore = "trial_cpu_core"

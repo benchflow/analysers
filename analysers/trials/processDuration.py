@@ -57,10 +57,6 @@ def createQuery(sc, dataRDD, experimentID, trialID):
     
     return queries
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -73,7 +69,6 @@ def main():
     conf = SparkConf().setAppName("Process duration analyser")
     sc = CassandraSparkContext(conf=conf)
     
-    analyserConf = getAnalyserConf(SUTName)
     srcTable = "process"
     destTable = "trial_process_duration"
     

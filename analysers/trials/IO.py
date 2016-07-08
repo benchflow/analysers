@@ -54,10 +54,6 @@ def createQueries(dataRDD, trialID, experimentID, containerID, hostID):
                         "device":e["device"], "reads":e["reads"], "writes":e["writes"], "total":e["total"]})
     return queries
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -71,8 +67,7 @@ def main():
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
     sc = CassandraSparkContext(conf=conf)
-    
-    analyserConf = getAnalyserConf(SUTName)
+
     srcTable = "io_data"
     destTable = "trial_io"
     

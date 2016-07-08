@@ -51,10 +51,6 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
               "ram_levene_test_mean_stat":levenePValue["levene_mean_stat"], "ram_levene_test_median_stat":levenePValue["levene_median_stat"], "ram_levene_test_trimmed_stat":levenePValue["levene_trimmed_stat"], \
               "ram_variation_coefficient": metrics["variation_coefficient"]}]
     
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -67,8 +63,7 @@ def main():
     # Set configuration for spark context
     conf = SparkConf().setAppName("Ram analyser")
     sc = CassandraSparkContext(conf=conf)
-    
-    analyserConf = getAnalyserConf(SUTName)
+
     cassandraKeyspace = "benchflow"
     dataTable = "environment_data"
     srcTable = "trial_ram"

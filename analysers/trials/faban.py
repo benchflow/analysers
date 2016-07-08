@@ -42,10 +42,6 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containe
                           "faban_details_me":metrics["me"], "faban_details_ci095_min":metrics["ci095_min"], "faban_details_ci095_max":metrics["ci095_max"]})
     return queries
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     #Takes arguments
     args = json.loads(sys.argv[1])
@@ -59,8 +55,7 @@ def main():
     # Set configuration for spark context
     conf = SparkConf().setAppName("Faban trial analyser")
     sc = CassandraSparkContext(conf=conf)
-    
-    #analyserConf = getAnalyserConf(SUTName)
+
     srcTable = "faban_details"
     destTable = "trial_faban_details"
     

@@ -45,10 +45,6 @@ def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containe
     
     return query
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():        
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -61,8 +57,7 @@ def main():
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
     sc = CassandraSparkContext(conf=conf)
-    
-    analyserConf = getAnalyserConf(SUTName)
+
     srcTable = "trial_io"
     destTable = "exp_io"
     

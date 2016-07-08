@@ -17,19 +17,6 @@ def getHostCores(sc, cassandraKeyspace, hostID):
     
     return nOfCores
 
-def getAnalyserConfiguration(SUTName):
-    from pyspark_cassandra import CassandraSparkContext
-    from pyspark_cassandra import RowFormat
-    from pyspark import SparkConf
-    from pyspark import SparkFiles
-      
-    analyserConf = {}
-    confPath = SparkFiles.get(SUTName+".analysers.yml")
-    with open(confPath) as f:
-        SUTConf = yaml.load(f)
-        analyserConf["initial_processes_cut"] = SUTConf["initial_processes_cut"]
-    return analyserConf
-
 def computeMetrics(data):
     if len(data) == 0:
         return {"median":None, "mean":None, "integral":None, "num_data_points":0, \

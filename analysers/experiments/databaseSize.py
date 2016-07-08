@@ -31,10 +31,6 @@ def createQuery(dataRDD, experimentID):
               "size_p90":metrics["p90"], "size_p99":metrics["p99"], "size_percentiles":metrics["percentiles"], \
               "size_me":metrics["me"], "size_ci095_min":metrics["ci095_min"], "size_ci095_max":metrics["ci095_max"]}]
 
-def getAnalyserConf(SUTName):
-    from commons import getAnalyserConfiguration
-    return getAnalyserConfiguration(SUTName)
-
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
@@ -46,7 +42,6 @@ def main():
     conf = SparkConf().setAppName("Number of process instances analyser")
     sc = CassandraSparkContext(conf=conf)
     
-    analyserConf = getAnalyserConf(SUTName)
     srcTable = "trial_byte_size"
     destTable = "exp_byte_size"
     
