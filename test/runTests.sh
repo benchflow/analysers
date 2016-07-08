@@ -1,7 +1,7 @@
 #!/bin/sh
 
 SPARK_MASTER=local[*]
-PYSPARK_CASSANDRA_JAR_PATH=/test/dependancies/pyspark-cassandra-assembly-0.3.5.jar
+PYSPARK_CASSANDRA_JAR_PATH=/test/dependencies/pyspark-cassandra-assembly-0.3.5.jar
 TRIAL_ID=camundaZZZZZZMV_ZZZZZZOX
 EXPERIMENT_ID=camundaZZZZZZMV
 SUT_NAME=camunda

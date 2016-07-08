@@ -11,8 +11,8 @@ COPY $TRAVIS_BUILD_DIR/analysers /analysers
 COPY $TRAVIS_BUILD_DIR/test/python /test/pythonTests
 COPY $TRAVIS_BUILD_DIR/test/spark /test/sparkTests
 COPY $TRAVIS_BUILD_DIR/test/runTests.sh /test/
-COPY $TRAVIS_BUILD_DIR/test/dependancies/pyspark-cassandra-assembly-0.3.5.jar /test/dependancies/
-COPY $TRAVIS_BUILD_DIR/test/dependancies/log4j.properties $SPARK_HOME/conf/
+COPY $TRAVIS_BUILD_DIR/test/dependencies/pyspark-cassandra-assembly-0.3.5.jar /test/dependencies/
+COPY $TRAVIS_BUILD_DIR/test/dependencies/log4j.properties $SPARK_HOME/conf/
 COPY $TRAVIS_BUILD_DIR/test/conf/example /test/conf/example
 
 RUN chmod +x /test/runTests.sh
