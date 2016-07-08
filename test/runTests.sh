@@ -6,7 +6,6 @@ TRIAL_ID=camundaZZZZZZMV_ZZZZZZOX
 EXPERIMENT_ID=camundaZZZZZZMV
 SUT_NAME=camunda
 CONTAINER_ID=stats_camunda
-ANALYSERS_CONF=/test/conf/example/camunda.analysers.yml
 CASSANDRA_HOST=cassandra
 HOST_NAME=docker_host
 
@@ -85,7 +84,6 @@ do
 	--jars $PYSPARK_CASSANDRA_JAR_PATH \
     --driver-class-path $PYSPARK_CASSANDRA_JAR_PATH \
 	--conf spark.cassandra.connection.host=$CASSANDRA_HOST \
-    --files $ANALYSERS_CONF \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/trials/$SCRIPT.py \
 	'{"cassandra_keyspace":"benchflow", "sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
@@ -103,7 +101,6 @@ do
 	--jars $PYSPARK_CASSANDRA_JAR_PATH \
     --driver-class-path $PYSPARK_CASSANDRA_JAR_PATH \
 	--conf spark.cassandra.connection.host=$CASSANDRA_HOST \
-    --files $ANALYSERS_CONF \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/experiments/$SCRIPT.py \
 	'{"cassandra_keyspace":"benchflow", "sut_name": "'$SUT_NAME'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
