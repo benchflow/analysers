@@ -66,7 +66,7 @@ def main():
     args = json.loads(sys.argv[1])
     trialID = str(args["trial_id"])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
