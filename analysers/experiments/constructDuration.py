@@ -7,7 +7,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
 def createQuery(CassandraRDD, experimentID):
-    from commons import computeExperimentMetrics, computeModeMinMax
+    from commons import computeExperimentMetrics, computeModeMinMax, computeCombinedVar
     
     queries = []
     
@@ -25,6 +25,8 @@ def createQuery(CassandraRDD, experimentID):
         metrics = computeExperimentMetrics(dataRDD, "construct_duration")
         metrics.update(computeModeMinMax(dataRDD, "construct_duration"))
         
+        combinedVar = computeCombinedVar(CassandraRDD, "construct_duration")
+        
         if consType is None:
             consType = "Unspecified"
         if name is None:
@@ -40,7 +42,8 @@ def createQuery(CassandraRDD, experimentID):
                       "construct_duration_p95_max":metrics["p95_max"], "construct_duration_p95_min":metrics["p95_min"], \
                       "construct_duration_p99_max":metrics["p99_max"], "construct_duration_p99_min":metrics["p99_min"], \
                       "construct_duration_q3_min":metrics["q3_min"], "construct_duration_q3_max":metrics["q3_max"], "construct_duration_weighted_avg":metrics["weighted_avg"], \
-                      "construct_duration_best": metrics["best"], "construct_duration_worst": metrics["worst"], "construct_duration_average": metrics["average"]})
+                      "construct_duration_best": metrics["best"], "construct_duration_worst": metrics["worst"], "construct_duration_average": metrics["average"], \
+                      "construct_duration_combined_variance": combinedVar})
 
     return queries
 
@@ -61,7 +64,7 @@ def main():
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("construct_duration_min", "construct_duration_max", "construct_duration_q1", "construct_duration_q2", "construct_duration_q3", \
                 "construct_duration_p95", "construct_duration_num_data_points", "construct_duration_mean", \
-                "construct_duration_p90", "construct_duration_p99", "construct_type", "construct_name", \
+                "construct_duration_p90", "construct_duration_p99", "construct_type", "construct_name", "construct_duration_variance", \
                 "construct_duration_me", "trial_id", "construct_duration_mode", "construct_duration_mode_freq") \
         .where("experiment_id=?", experimentID)
     CassandraRDD.cache()

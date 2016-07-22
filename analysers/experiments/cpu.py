@@ -68,12 +68,13 @@ def computeExperimentCoreMetrics(CassandraRDD, i):
               "p95_max":p95Max, "p95_min":p95Min, \
               "p99_max":p99Max, "p99_min":p99Min, \
               "q3_min":q3Min, "q3_max":q3Max, "weighted_avg":weightedMean}
+    
  
 def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID):
-    from commons import computeExperimentMetrics, computeMetrics, computeLevene
+    from commons import computeExperimentMetrics, computeMetrics, computeLevene, computeCombinedVar
     
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
+        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_variance", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
         .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
     CassandraRDD.cache()
     
@@ -87,6 +88,8 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
     integralMetrics = computeMetrics(data)
     
     levenePValue = computeLevene(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID, "cpu_percent_usage")
+    
+    combinedVar = computeCombinedVar(CassandraRDD, "cpu")
     
     return [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "cpu_cores":nOfActiveCores, \
               "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_q1_min":metrics["q1_min"], \
@@ -103,13 +106,13 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
               "cpu_integral_ci095_min":integralMetrics["ci095_min"], "cpu_integral_ci095_max":integralMetrics["ci095_max"], \
               "cpu_levene_test_mean":levenePValue["levene_mean"], "cpu_levene_test_median":levenePValue["levene_median"], "cpu_levene_test_trimmed":levenePValue["levene_trimmed"], \
               "cpu_levene_test_mean_stat":levenePValue["levene_mean_stat"], "cpu_levene_test_median_stat":levenePValue["levene_median_stat"], "cpu_levene_test_trimmed_stat":levenePValue["levene_trimmed_stat"], \
-              "cpu_variation_coefficient": metrics["variation_coefficient"]}]
+              "cpu_variation_coefficient": metrics["variation_coefficient"], "cpu_combined_variance": combinedVar}]
     
 def createCoreQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
-    from commons import getHostCores
+    from commons import getHostCores, computeCombinedVar
     
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_cores") \
+        .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_cores", "cpu_variance") \
         .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
     CassandraRDD.cache()
     
@@ -122,12 +125,15 @@ def createCoreQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, 
               "cpu_min":[None]*nOfCores, "cpu_max":[None]*nOfCores, "cpu_q1_min":[None]*nOfCores, \
               "cpu_q1_max":[None]*nOfCores, "cpu_q2_min":[None]*nOfCores, "cpu_q2_max":[None]*nOfCores, \
               "cpu_p95_max":[None]*nOfCores, "cpu_p95_min":[None]*nOfCores, \
-              "cpu_q3_min":[None]*nOfCores, "cpu_q3_max":[None]*nOfCores, "cpu_weighted_avg":[None]*nOfCores}]
+              "cpu_q3_min":[None]*nOfCores, "cpu_q3_max":[None]*nOfCores, "cpu_weighted_avg":[None]*nOfCores, \
+              "cpu_combined_variance":[None]*nOfCores}]
     
     for i in range(nOfCores):
         coreMetrics = computeExperimentCoreMetrics(CassandraRDD, i)
+        combinedVar = computeCombinedVar(CassandraRDD, "cpu", i)
         
         query[0]["cpu_weighted_avg"][i] = coreMetrics["weighted_avg"]
+        query[0]["cpu_combined_variance"][i] = combinedVar
         query[0]["cpu_min"][i] = coreMetrics["min"]
         query[0]["cpu_max"][i] = coreMetrics["max"]
         query[0]["cpu_q1_min"][i] = coreMetrics["q1_min"]

@@ -25,7 +25,8 @@ script:
   - docker cp ./test/data/loadMockData.cql cassandra:/
   - docker exec -ti cassandra cqlsh -f /benchflow.cql
   - docker exec -ti cassandra cqlsh -f /loadMockData.cql
-  - travis_wait 40 docker run --rm --name spark --link cassandra:cassandra --entrypoint=/test/runTests.sh sparktests
+  - sleep 60
+  - travis_wait 60 docker run --rm --name spark --link cassandra:cassandra --entrypoint=/test/runTests.sh sparktests
 
 after_success:
   # Clean the v-dev release and tag we are using to release development version in CI

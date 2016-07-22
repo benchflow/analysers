@@ -54,7 +54,7 @@ def createQuery(dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCo
     
     query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "host_id":hostID, \
               "cpu_mean":metrics["mean"], "cpu_num_data_points":metrics["num_data_points"], \
-              "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_sd":metrics["sd"], \
+              "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_sd":metrics["sd"], "cpu_variance":metrics["variance"], \
               "cpu_q1":metrics["q1"], "cpu_q2":metrics["q2"], "cpu_q3":metrics["q3"], "cpu_p95":metrics["p95"], \
               "cpu_me":metrics["me"], "cpu_ci095_min":metrics["ci095_min"], "cpu_ci095_max":metrics["ci095_max"], \
               "cpu_integral":metrics["integral"], "cpu_cores":nOfActiveCores, \
@@ -80,6 +80,7 @@ def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, cont
     query[0]["cpu_min"] = [None]*nOfCores
     query[0]["cpu_max"] = [None]*nOfCores
     query[0]["cpu_sd"] = [None]*nOfCores
+    query[0]["cpu_variance"] = [None]*nOfCores
     query[0]["cpu_q1"] = [None]*nOfCores
     query[0]["cpu_q2"] = [None]*nOfCores
     query[0]["cpu_q3"] = [None]*nOfCores
@@ -101,6 +102,7 @@ def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, cont
         query[0]["cpu_min"][i] = met["min"]
         query[0]["cpu_max"][i] = met["max"]
         query[0]["cpu_sd"][i] = met["sd"]
+        query[0]["cpu_variance"][i] = met["variance"]
         query[0]["cpu_q1"][i] = met["q1"]
         query[0]["cpu_q2"][i] = met["q2"]
         query[0]["cpu_q3"][i] = met["q3"]

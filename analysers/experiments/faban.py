@@ -50,7 +50,7 @@ def createOpsQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, h
             query.update({"experiment_id":experimentID, "faban_driver_host": comb[0], "faban_driver_name": comb[1], "faban_op_name": comb[2], \
                       "faban_"+dataName+"_mode":mode[0], "faban_"+dataName+"_mode_freq":mode[1], \
                       "faban_"+dataName+"_mean":metrics["mean"], "faban_"+dataName+"_num_data_points":metrics["num_data_points"], \
-                      "faban_"+dataName+"_min":metrics["min"], "faban_"+dataName+"_max":metrics["max"], "faban_"+dataName+"_sd":metrics["sd"], \
+                      "faban_"+dataName+"_min":metrics["min"], "faban_"+dataName+"_max":metrics["max"], "faban_"+dataName+"_sd":metrics["sd"], "faban_"+dataName+"_variance":metrics["variance"], \
                       "faban_"+dataName+"_q1":metrics["q1"], "faban_"+dataName+"_q2":metrics["q2"], "faban_"+dataName+"_q3":metrics["q3"], "faban_"+dataName+"_p95":metrics["p95"], \
                       "faban_"+dataName+"_p90":metrics["p90"], "faban_"+dataName+"_p99":metrics["p99"], "faban_"+dataName+"_percentiles":metrics["percentiles"], \
                       "faban_"+dataName+"_me":metrics["me"], "faban_"+dataName+"_ci095_min":metrics["ci095_min"], "faban_"+dataName+"_ci095_max":metrics["ci095_max"]})
@@ -108,7 +108,7 @@ def runInfoQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hos
             query.update({"experiment_id":experimentID, "faban_host": host, "faban_metric_unit": data.first()["metric_unit"], \
                       "faban_"+dataName+"_mode":mode[0], "faban_"+dataName+"_mode_freq":mode[1], \
                       "faban_"+dataName+"_mean":metrics["mean"], "faban_"+dataName+"_num_data_points":metrics["num_data_points"], \
-                      "faban_"+dataName+"_min":metrics["min"], "faban_"+dataName+"_max":metrics["max"], "faban_"+dataName+"_sd":metrics["sd"], \
+                      "faban_"+dataName+"_min":metrics["min"], "faban_"+dataName+"_max":metrics["max"], "faban_"+dataName+"_sd":metrics["sd"], "faban_"+dataName+"_variance":metrics["variance"], \
                       "faban_"+dataName+"_q1":metrics["q1"], "faban_"+dataName+"_q2":metrics["q2"], "faban_"+dataName+"_q3":metrics["q3"], "faban_"+dataName+"_p95":metrics["p95"], \
                       "faban_"+dataName+"_p90":metrics["p90"], "faban_"+dataName+"_p99":metrics["p99"], "faban_"+dataName+"_percentiles":metrics["percentiles"], \
                       "faban_"+dataName+"_me":metrics["me"], "faban_"+dataName+"_ci095_min":metrics["ci095_min"], "faban_"+dataName+"_ci095_max":metrics["ci095_max"]})
@@ -170,7 +170,7 @@ def createCustomStatsQuery(sc, cassandraKeyspace, srcTable, experimentID, contai
             query.update({"experiment_id":experimentID, "faban_driver_host": comb[0], "faban_driver_name": comb[1], "faban_stat_name": comb[2], \
                       "faban_stat_mode":mode[0], "faban_stat_mode_freq":mode[1], "faban_stat_description":comb[3],\
                       "faban_stat_mean":metrics["mean"], "faban_stat_num_data_points":metrics["num_data_points"], \
-                      "faban_stat_min":metrics["min"], "faban_stat_max":metrics["max"], "faban_stat_sd":metrics["sd"], \
+                      "faban_stat_min":metrics["min"], "faban_stat_max":metrics["max"], "faban_stat_sd":metrics["sd"], "faban_stat_variance":metrics["variance"], \
                       "faban_stat_q1":metrics["q1"], "faban_stat_q2":metrics["q2"], "faban_stat_q3":metrics["q3"], "faban_stat_p95":metrics["p95"], \
                       "faban_stat_p90":metrics["p90"], "faban_stat_p99":metrics["p99"], "faban_stat_percentiles":metrics["percentiles"], \
                       "faban_stat_me":metrics["me"], "faban_stat_ci095_min":metrics["ci095_min"], "faban_stat_ci095_max":metrics["ci095_max"]})

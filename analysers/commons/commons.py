@@ -17,6 +17,18 @@ def getHostCores(sc, cassandraKeyspace, hostID):
     
     return nOfCores
 
+def getAnalyserConfiguration(configFile):
+    from pyspark_cassandra import CassandraSparkContext
+    from pyspark_cassandra import RowFormat
+    from pyspark import SparkConf
+    from pyspark import SparkFiles
+      
+    analyserConf = {}
+    confPath = SparkFiles.get(configFile)
+    with open(confPath) as f:
+        SUTConf = yaml.load(f)
+    return analyserConf
+
 def computeMetrics(data):
     if len(data) == 0:
         return {"median":None, "mean":None, "integral":None, "num_data_points":0, \
@@ -47,7 +59,7 @@ def computeMetrics(data):
     dataIntegral = integrate.trapz(data).item()
 
     return {"mean":mean, "integral":dataIntegral, "num_data_points":dataLength, \
-              "min":dataMin, "max":dataMax, "sd":stdD, "q1":q1, "q2":q2, "q3":q3, "p95":p95, "me":marginError, \
+              "min":dataMin, "max":dataMax, "sd":stdD, "variance": variance, "q1":q1, "q2":q2, "q3":q3, "p95":p95, "me":marginError, \
               "ci095_min":CILow, "ci095_max":CIHigh, "p90":p90, "p99":p99, "percentiles": percentiles}
     
 def computeExperimentMetrics(CassandraRDD, dataName):
@@ -221,6 +233,23 @@ def computeModeMinMax(CassandraRDD, dataName):
     
     return {"mode_min":modeMin, "mode_max":modeMax, \
               "mode_min_freq":modeMinFreq, "mode_max_freq":modeMaxFreq}
+
+# The combined variance is calculated the same way as the fishmethod package from R computes it 
+# (see this thread for the formula: http://stackoverflow.com/questions/9222056/existing-function-to-combine-standard-deviations-in-r)
+def computeCombinedVar(dataRDD, dataName, i=None):
+    sumN = dataRDD.map(lambda x: x[dataName+"_num_data_points"]).sum()
+    if sumN-1 == 0:
+        return float("NaN")
+    if i is None:
+        sumOfSquares = dataRDD.map(lambda x: (x[dataName+"_num_data_points"]-1)*x[dataName+"_variance"]+x[dataName+"_num_data_points"]*x[dataName+"_mean"]**2).sum()
+        # TODO: Think about passing weighted avg instead
+        grandMean = (dataRDD.map(lambda x: x[dataName+"_num_data_points"]*x[dataName+"_mean"]).sum())/sumN
+    else:
+        sumOfSquares = dataRDD.map(lambda x: (x[dataName+"_num_data_points"]-1)*x[dataName+"_variance"][i]+x[dataName+"_num_data_points"]*x[dataName+"_mean"][i]**2).sum()
+        # TODO: Think about passing weighted avg instead
+        grandMean = (dataRDD.map(lambda x: x[dataName+"_num_data_points"]*x[dataName+"_mean"][i]).sum())/sumN
+    combinedVar = (sumOfSquares - sumN * grandMean**2)/(sumN - 1)
+    return combinedVar
 
 def cutNInitialProcesses(dataRDD, nToIgnore):
     from pyspark_cassandra import CassandraSparkContext
