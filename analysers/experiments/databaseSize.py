@@ -26,7 +26,7 @@ def createQuery(dataRDD, experimentID):
     
     return [{"experiment_id":experimentID, "size_mode":mode[0], "size_mode_freq":mode[1], \
               "size_mean":metrics["mean"], "size_num_data_points":metrics["num_data_points"], \
-              "size_min":metrics["min"], "size_max":metrics["max"], "size_sd":metrics["sd"], \
+              "size_min":metrics["min"], "size_max":metrics["max"], "size_sd":metrics["sd"], "size_variance":metrics["variance"], \
               "size_q1":metrics["q1"], "size_q2":metrics["q2"], "size_q3":metrics["q3"], "size_p95":metrics["p95"], \
               "size_p90":metrics["p90"], "size_p99":metrics["p99"], "size_percentiles":metrics["percentiles"], \
               "size_me":metrics["me"], "size_ci095_min":metrics["ci095_min"], "size_ci095_max":metrics["ci095_max"]}]

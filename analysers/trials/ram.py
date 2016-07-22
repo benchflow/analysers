@@ -76,7 +76,7 @@ def createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, container
               "ram_mode":mode[0], "ram_mode_freq":mode[1], "ram_integral":metrics["integral"], \
               "relative_efficency":relativeEfficency, "absolute_efficency":absoluteEfficency, \
               "ram_mean":metrics["mean"], "ram_num_data_points":metrics["num_data_points"], \
-              "ram_min":metrics["min"], "ram_max":metrics["max"], "ram_sd":metrics["sd"], \
+              "ram_min":metrics["min"], "ram_max":metrics["max"], "ram_sd":metrics["sd"], "ram_variance":metrics["variance"], \
               "ram_q1":metrics["q1"], "ram_q2":metrics["q2"], "ram_q3":metrics["q3"], "ram_p95":metrics["p95"], \
               "ram_me":metrics["me"], "ram_ci095_min":metrics["ci095_min"], "ram_ci095_max":metrics["ci095_max"], \
               "ram_p90":metrics["p90"], "ram_p99":metrics["p99"], "ram_percentiles":metrics["percentiles"]}]

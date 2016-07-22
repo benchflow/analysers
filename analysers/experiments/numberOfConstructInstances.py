@@ -31,7 +31,7 @@ def createQuery(dataRDD, experimentID):
         queries.append({"experiment_id":experimentID, "number_of_construct_instances_mode":mode[0], "number_of_construct_instances_mode_freq":mode[1], \
                  "construct_type": consType, "construct_name": name, \
                   "number_of_construct_instances_mean":metrics["mean"], "number_of_construct_instances_num_data_points":metrics["num_data_points"], \
-                  "number_of_construct_instances_min":metrics["min"], "number_of_construct_instances_max":metrics["max"], "number_of_construct_instances_sd":metrics["sd"], \
+                  "number_of_construct_instances_min":metrics["min"], "number_of_construct_instances_max":metrics["max"], "number_of_construct_instances_sd":metrics["sd"], "number_of_construct_instances_variance":metrics["variance"], \
                   "number_of_construct_instances_q1":metrics["q1"], "number_of_construct_instances_q2":metrics["q2"], "number_of_construct_instances_q3":metrics["q3"], "number_of_construct_instances_p95":metrics["p95"], \
                   "number_of_construct_instances_p90":metrics["p90"], "number_of_construct_instances_p99":metrics["p99"], "number_of_construct_instances_percentiles":metrics["percentiles"], \
                   "number_of_construct_instances_me":metrics["me"], "number_of_construct_instances_ci095_min":metrics["ci095_min"], "number_of_construct_instances_ci095_max":metrics["ci095_max"]})

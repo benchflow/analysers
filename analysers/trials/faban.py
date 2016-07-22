@@ -36,7 +36,7 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containe
                 queries.append({"experiment_id":experimentID, "trial_id":trialID, "faban_details_host":host, "faban_details_op_name":operation, "faban_details_section":section, \
                           "faban_details_mode":mode[0], "faban_details_mode_freq":mode[1], "faban_details_integral":metrics["integral"], \
                           "faban_details_mean":metrics["mean"], "faban_details_num_data_points":metrics["num_data_points"], \
-                          "faban_details_min":metrics["min"], "faban_details_max":metrics["max"], "faban_details_sd":metrics["sd"], \
+                          "faban_details_min":metrics["min"], "faban_details_max":metrics["max"], "faban_details_sd":metrics["sd"], "faban_details_variance":metrics["variance"], \
                           "faban_details_q1":metrics["q1"], "faban_details_q2":metrics["q2"], "faban_details_q3":metrics["q3"], "faban_details_p95":metrics["p95"], \
                           "faban_details_p99":metrics["p99"], "faban_details_p90":metrics["p90"], "faban_details_percentiles":metrics["percentiles"], \
                           "faban_details_me":metrics["me"], "faban_details_ci095_min":metrics["ci095_min"], "faban_details_ci095_max":metrics["ci095_max"]})
