@@ -12,7 +12,7 @@ from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
 def createQuery(CassandraRDD, experimentID):
-    from commons import computeExperimentMetrics, computeModeMinMax
+    from commons import computeExperimentMetrics, computeModeMinMax, computeCombinedVar
     
     queries = []
     
@@ -22,6 +22,8 @@ def createQuery(CassandraRDD, experimentID):
         dataRDD = CassandraRDD.filter(lambda a: a["process_definition_id"] == process)
         metrics = computeExperimentMetrics(dataRDD, "process_duration")
         metrics.update(computeModeMinMax(dataRDD, "process_duration"))
+        
+        combinedVar = computeCombinedVar(dataRDD, "process_duration")
         
         queries.append({"process_definition_id":process, "experiment_id":experimentID, "process_duration_mode_min":metrics["min"], "process_duration_mode_max":metrics["max"], \
                   "process_duration_mode_min_freq":metrics["mode_min_freq"], "process_duration_mode_max_freq":metrics["mode_max_freq"], \
@@ -33,7 +35,7 @@ def createQuery(CassandraRDD, experimentID):
                   "process_duration_p99_max":metrics["p99_max"], "process_duration_p99_min":metrics["p99_min"], \
                   "process_duration_q3_min":metrics["q3_min"], "process_duration_q3_max":metrics["q3_max"], "process_duration_weighted_avg":metrics["weighted_avg"], \
                   "process_duration_best": metrics["best"], "process_duration_worst": metrics["worst"], "process_duration_average": metrics["average"], \
-                  "process_duration_variation_coefficient": metrics["variation_coefficient"]})
+                  "process_duration_variation_coefficient": metrics["variation_coefficient"], "process_duration_combined_variance": combinedVar})
     
     return queries
 
@@ -41,7 +43,7 @@ def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context
@@ -55,7 +57,7 @@ def main():
         .select("process_duration_min", "process_duration_max", "process_duration_q1", "process_duration_q2", "process_duration_q3", \
                 "process_duration_p95", "process_duration_num_data_points", "process_duration_mean", \
                 "process_duration_me", "trial_id", "process_duration_mode", "process_duration_mode_freq", "process_definition_id", \
-                "process_duration_p90", "process_duration_p99") \
+                "process_duration_p90", "process_duration_p99", "process_duration_variance") \
         .where("experiment_id=?", experimentID)
     CassandraRDD.cache()
     

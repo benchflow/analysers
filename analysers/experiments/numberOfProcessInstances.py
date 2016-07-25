@@ -31,7 +31,7 @@ def createQuery(dataRDD, experimentID):
         
         queries.append({"process_definition_id": process, "experiment_id":experimentID, "number_of_process_instances_mode":mode[0], "number_of_process_instances_mode_freq":mode[1], \
                   "number_of_process_instances_mean":metrics["mean"], "number_of_process_instances_num_data_points":metrics["num_data_points"], \
-                  "number_of_process_instances_min":metrics["min"], "number_of_process_instances_max":metrics["max"], "number_of_process_instances_sd":metrics["sd"], \
+                  "number_of_process_instances_min":metrics["min"], "number_of_process_instances_max":metrics["max"], "number_of_process_instances_sd":metrics["sd"], "number_of_process_instances_variance":metrics["variance"], \
                   "number_of_process_instances_q1":metrics["q1"], "number_of_process_instances_q2":metrics["q2"], "number_of_process_instances_q3":metrics["q3"], "number_of_process_instances_p95":metrics["p95"], \
                   "number_of_process_instances_p90":metrics["p90"], "number_of_process_instances_p99":metrics["p99"], "number_of_process_instances_percentiles":metrics["percentiles"], \
                   "number_of_process_instances_me":metrics["me"], "number_of_process_instances_ci095_min":metrics["ci095_min"], "number_of_process_instances_ci095_max":metrics["ci095_max"]})
@@ -42,7 +42,7 @@ def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context

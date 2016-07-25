@@ -30,7 +30,7 @@ def createQuery(sc, dataRDD, experimentID, trialID):
     
     queries.append({"process_definition_id":"all", "experiment_id":experimentID, "trial_id":trialID, "process_duration_mode":mode[0], "process_duration_mode_freq":mode[1], \
               "process_duration_mean":metrics["mean"], "process_duration_num_data_points":metrics["num_data_points"], \
-              "process_duration_min":metrics["min"], "process_duration_max":metrics["max"], "process_duration_sd":metrics["sd"], \
+              "process_duration_min":metrics["min"], "process_duration_max":metrics["max"], "process_duration_sd":metrics["sd"], "process_duration_variance":metrics["variance"], \
               "process_duration_q1":metrics["q1"], "process_duration_q2":metrics["q2"], "process_duration_q3":metrics["q3"], "process_duration_p95":metrics["p95"], \
               "process_duration_me":metrics["me"], "process_duration_ci095_min":metrics["ci095_min"], "process_duration_ci095_max":metrics["ci095_max"], \
               "process_duration_p90":metrics["p90"], "process_duration_p99":metrics["p99"], "process_duration_percentiles":metrics["percentiles"]})
@@ -50,7 +50,7 @@ def createQuery(sc, dataRDD, experimentID, trialID):
         
         queries.append({"process_definition_id":process, "experiment_id":experimentID, "trial_id":trialID, "process_duration_mode":mode[0], "process_duration_mode_freq":mode[1], \
                   "process_duration_mean":metrics["mean"], "process_duration_num_data_points":metrics["num_data_points"], \
-                  "process_duration_min":metrics["min"], "process_duration_max":metrics["max"], "process_duration_sd":metrics["sd"], \
+                  "process_duration_min":metrics["min"], "process_duration_max":metrics["max"], "process_duration_sd":metrics["sd"], "process_duration_variance":metrics["variance"], \
                   "process_duration_q1":metrics["q1"], "process_duration_q2":metrics["q2"], "process_duration_q3":metrics["q3"], "process_duration_p95":metrics["p95"], \
                   "process_duration_me":metrics["me"], "process_duration_ci095_min":metrics["ci095_min"], "process_duration_ci095_max":metrics["ci095_max"], \
                   "process_duration_p90":metrics["p90"], "process_duration_p99":metrics["p99"], "process_duration_percentiles":metrics["percentiles"]})
@@ -62,7 +62,7 @@ def main():
     args = json.loads(sys.argv[1])
     trialID = str(args["trial_id"])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context

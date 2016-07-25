@@ -31,7 +31,7 @@ def createQuery(dataRDD, experimentID):
         
         queries.append({"process_definition_id": process, "experiment_id":experimentID, "throughput_mode":mode[0], "throughput_mode_freq":mode[1], \
                   "throughput_mean":metrics["mean"], "throughput_num_data_points":metrics["num_data_points"], \
-                  "throughput_min":metrics["min"], "throughput_max":metrics["max"], "throughput_sd":metrics["sd"], \
+                  "throughput_min":metrics["min"], "throughput_max":metrics["max"], "throughput_sd":metrics["sd"], "throughput_variance":metrics["variance"], \
                   "throughput_q1":metrics["q1"], "throughput_q2":metrics["q2"], "throughput_q3":metrics["q3"], "throughput_p95":metrics["p95"], \
                   "throughput_p90":metrics["p90"], "throughput_p99":metrics["p99"], "throughput_percentiles":metrics["percentiles"], \
                   "throughput_me":metrics["me"], "throughput_ci095_min":metrics["ci095_min"], "throughput_ci095_max":metrics["ci095_max"]})
@@ -42,7 +42,7 @@ def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context

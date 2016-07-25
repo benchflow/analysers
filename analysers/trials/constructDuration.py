@@ -25,7 +25,7 @@ def createQuery(sc, dataRDD, experimentID, trialID):
                     "construct_duration_mode_freq":mode[1], "construct_duration_p90":metrics["p90"], "construct_duration_p99":metrics["p99"], \
                     "construct_duration_percentiles":metrics["percentiles"], \
                   "construct_duration_mean":metrics["mean"], "construct_duration_num_data_points":metrics["num_data_points"], \
-                  "construct_duration_min":metrics["min"], "construct_duration_max":metrics["max"], "construct_duration_sd":metrics["sd"], \
+                  "construct_duration_min":metrics["min"], "construct_duration_max":metrics["max"], "construct_duration_sd":metrics["sd"], "construct_duration_variance":metrics["variance"], \
                   "construct_duration_q1":metrics["q1"], "construct_duration_q2":metrics["q2"], "construct_duration_q3":metrics["q3"], "construct_duration_p95":metrics["p95"], \
                   "construct_duration_me":metrics["me"], "construct_duration_ci095_min":metrics["ci095_min"], "construct_duration_ci095_max":metrics["ci095_max"]})
     
@@ -55,7 +55,7 @@ def createQuery(sc, dataRDD, experimentID, trialID):
                     "construct_duration_mode_freq":mode[1], "construct_duration_p90":metrics["p90"], "construct_duration_p99":metrics["p99"], \
                     "construct_duration_percentiles":metrics["percentiles"], \
                   "construct_duration_mean":metrics["mean"], "construct_duration_num_data_points":metrics["num_data_points"], \
-                  "construct_duration_min":metrics["min"], "construct_duration_max":metrics["max"], "construct_duration_sd":metrics["sd"], \
+                  "construct_duration_min":metrics["min"], "construct_duration_max":metrics["max"], "construct_duration_sd":metrics["sd"], "construct_duration_variance":metrics["variance"], \
                   "construct_duration_q1":metrics["q1"], "construct_duration_q2":metrics["q2"], "construct_duration_q3":metrics["q3"], "construct_duration_p95":metrics["p95"], \
                   "construct_duration_me":metrics["me"], "construct_duration_ci095_min":metrics["ci095_min"], "construct_duration_ci095_max":metrics["ci095_max"]})
 
@@ -66,7 +66,7 @@ def main():
     args = json.loads(sys.argv[1])
     trialID = str(args["trial_id"])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
     # Set configuration for spark context

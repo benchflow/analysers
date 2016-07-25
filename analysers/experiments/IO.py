@@ -38,7 +38,7 @@ def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containe
     # TODO: Fix this
     query = {"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "device":dev, op+"_mode":mode[0], \
               op+"_mode_freq":mode[1], op+"_mean":metrics["mean"], \
-              op+"_min":metrics["min"], op+"_max":metrics["max"], op+"_sd":metrics["sd"], \
+              op+"_min":metrics["min"], op+"_max":metrics["max"], op+"_sd":metrics["sd"], op+"_variance":metrics["variance"], \
               op+"_q1":metrics["q1"], op+"_q2":metrics["q2"], op+"_q3":metrics["q3"], op+"_p95":metrics["p95"], \
               op+"_p90":metrics["p90"], op+"_p99":metrics["p99"], op+"_percentiles":metrics["percentiles"], \
               op+"_me":metrics["me"], op+"_ci095_min":metrics["ci095_min"], op+"_ci095_max":metrics["ci095_max"]}
@@ -49,7 +49,7 @@ def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     containerID = str(args["container_id"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])

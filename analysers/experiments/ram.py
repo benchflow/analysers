@@ -16,10 +16,10 @@ from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
     
 def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID):
-    from commons import computeExperimentMetrics, computeModeMinMax, computeMetrics, computeLevene
+    from commons import computeExperimentMetrics, computeModeMinMax, computeMetrics, computeLevene, computeCombinedVar
     
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_ram") \
-        .select("ram_min", "ram_max", "ram_q1", "ram_q2", "ram_q3", "ram_p90", "ram_p95", "ram_p99", "ram_num_data_points", "ram_mean", "ram_me", "trial_id", "ram_integral", "ram_mode", "ram_mode_freq") \
+        .select("ram_min", "ram_max", "ram_q1", "ram_q2", "ram_q3", "ram_p90", "ram_p95", "ram_p99", "ram_num_data_points", "ram_mean", "ram_me", "trial_id", "ram_integral", "ram_mode", "ram_mode_freq", "ram_variance") \
         .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
     CassandraRDD.cache()
     
@@ -31,6 +31,8 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
     integralMetrics = computeMetrics(data)
     
     levenePValue = computeLevene(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID, "memory_usage")
+    
+    combinedVar = computeCombinedVar(CassandraRDD, "ram")
     
     return [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "ram_mode_min":metrics["min"], "ram_mode_max":metrics["max"], \
               "ram_mode_min_freq":metrics["mode_min_freq"], "ram_mode_max_freq":metrics["mode_max_freq"], \
@@ -49,13 +51,13 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
               "ram_integral_ci095_min":integralMetrics["ci095_min"], "ram_integral_ci095_max":integralMetrics["ci095_max"], \
               "ram_levene_test_mean":levenePValue["levene_mean"], "ram_levene_test_median":levenePValue["levene_median"], "ram_levene_test_trimmed":levenePValue["levene_trimmed"], \
               "ram_levene_test_mean_stat":levenePValue["levene_mean_stat"], "ram_levene_test_median_stat":levenePValue["levene_median_stat"], "ram_levene_test_trimmed_stat":levenePValue["levene_trimmed_stat"], \
-              "ram_variation_coefficient": metrics["variation_coefficient"]}]
+              "ram_variation_coefficient": metrics["variation_coefficient"], "ram_combined_variance": combinedVar}]
     
 def main():
     # Takes arguments
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
-    SUTName = str(args["sut_name"])
+    configFile = str(args["config_file"])
     containerID = str(args["container_id"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
