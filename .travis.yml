@@ -15,10 +15,10 @@ before_install:
   - wget https://raw.githubusercontent.com/benchflow/docker-images/dev/cassandra/data/benchflow.cql -O ./test/data/benchflow.cql
 
 script:
-  - docker run -d --name cassandra cassandra:3.0
+  - docker run -d --name cassandra cassandra:3.7
   - sleep 60
   - docker logs cassandra
-  - docker run -d --name cassandra2 --link cassandra:cassandra cassandra:3.0
+  - docker run -d --name cassandra2 --link cassandra:cassandra cassandra:3.7
   - sleep 60
   - docker logs cassandra2
   - docker cp ./test/data/benchflow.cql cassandra:/
