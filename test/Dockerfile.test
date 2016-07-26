@@ -1,11 +1,8 @@
-FROM gettyimages/spark:1.6.2-hadoop-2.6
+FROM benchflow/data-analyses-scheduler:dev
 
 ENV PYSPARK_PYTHON python2.7
 ENV PYTHONPATH /analysers/commons/
 ENV ANALYSERS_PATH /analysers
-
-RUN apt-get update 
-RUN	apt-get -y install python-numpy python-scipy python-tz python-yaml
 	
 COPY $TRAVIS_BUILD_DIR/analysers /analysers
 COPY $TRAVIS_BUILD_DIR/test/python /test/pythonTests
