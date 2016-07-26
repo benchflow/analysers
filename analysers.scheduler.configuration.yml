@@ -20,9 +20,6 @@ analysers_settings:
         - script_name: "execution_time"
           script_trial: "/analysers/trials/executionTime.py"
           script_experiment: "/analysers/experiments/executionTime.py"
-        - script_name: "throughput"
-          script_trial: "/analysers/trials/throughput.py"
-          script_experiment: "/analysers/experiments/throughput.py"
         - script_name: "process_duration"
           script_trial: "/analysers/trials/processDuration.py"
           script_experiment: "/analysers/experiments/processDuration.py"
@@ -38,3 +35,8 @@ analysers_settings:
         - script_name: "database_size"
           script_trial: "/analysers/trials/databaseSize.py"
           script_experiment: "/analysers/experiments/databaseSize.py"
+    - requirements: "number_of_process_instances,execution_time"
+      scripts: 
+        - script_name: "throughput"
+          script_trial: "/analysers/trials/throughput.py"
+          script_experiment: "/analysers/experiments/throughput.py"
