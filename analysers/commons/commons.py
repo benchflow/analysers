@@ -33,7 +33,7 @@ def computeMetrics(data):
     if len(data) == 0:
         return {"median":None, "mean":None, "integral":None, "num_data_points":0, \
               "min":None, "max":None, "sd":None, "q1":None, "q2":None, "q3":None, "p90":None, "p95":None, "p99":None, "me":None, \
-              "ci095_min":None, "ci095_max":None, "percentiles":None}   
+              "ci095_min":None, "ci095_max":None, "percentiles":None, "variance":None}   
     
     dataMin = np.min(data).item()
     dataMax = np.max(data).item()
@@ -161,7 +161,7 @@ def computeExperimentMetrics(CassandraRDD, dataName):
               "best": bestTrials, "worst": worstTrials, "average": averageTrials, \
               "variation_coefficient": coefficientOfVariation}
 
-def computeLevene(sc, cassandraKeyspace, expTable, dataTable, experimentID, containerID, hostID, dataName):
+def computeLevene(sc, cassandraKeyspace, expTable, dataTable, experimentID, containerName, hostID, dataName):
     trials = sc.cassandraTable(cassandraKeyspace, expTable) \
             .select("trial_id") \
             .where("experiment_id=?", experimentID) \
@@ -176,7 +176,7 @@ def computeLevene(sc, cassandraKeyspace, expTable, dataTable, experimentID, cont
         for trial in trials:
             sample = sc.cassandraTable(cassandraKeyspace, dataTable) \
                 .select(dataName) \
-                .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trial, experimentID, containerID, hostID) \
+                .where("trial_id=? AND experiment_id=? AND container_name=? AND host_id=?", trial, experimentID, containerName, hostID) \
                 .map(lambda a: a[dataName]) \
                 .collect()
             samples.append(sample)

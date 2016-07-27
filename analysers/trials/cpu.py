@@ -45,14 +45,14 @@ def getActiveCores(sc, cassandraKeyspace, srcTable, trialID, experimentID, conta
         nOfCpus = getHostCores(sc, cassandraKeyspace, hostID)
         return nOfCpus
 
-def createQuery(dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCores):
+def createQuery(dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores):
     from commons import computeMetrics
     
     metrics = computeMetrics(dataRDD)
     relativeEfficency = metrics["integral"]/(metrics["max"]*metrics["num_data_points"])
     absoluteEfficency = metrics["integral"]/(100.0*metrics["num_data_points"])
     
-    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "host_id":hostID, \
+    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "container_name":containerName, "host_id":hostID, \
               "cpu_mean":metrics["mean"], "cpu_num_data_points":metrics["num_data_points"], \
               "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_sd":metrics["sd"], "cpu_variance":metrics["variance"], \
               "cpu_q1":metrics["q1"], "cpu_q2":metrics["q2"], "cpu_q3":metrics["q3"], "cpu_p95":metrics["p95"], \
@@ -63,7 +63,7 @@ def createQuery(dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCo
     
     return query
 
-def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCores):
+def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores):
     from commons import computeMetrics, getHostCores
                 
     nOfCores = getHostCores(sc, cassandraKeyspace, hostID)
@@ -72,6 +72,7 @@ def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, cont
     query[0]["experiment_id"] = experimentID
     query[0]["trial_id"] = trialID
     query[0]["container_id"] = containerID
+    query[0]["container_name"] = containerName
     query[0]["host_id"] = hostID
     query[0]["cpu_cores"] = nOfActiveCores
     query[0]["cpu_num_data_points"] = None
@@ -122,6 +123,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     containerID = str(args["container_id"])
+    containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
@@ -142,7 +144,7 @@ def main():
             .map(lambda r: r['cpu_percent_usage']) \
             .collect()
     
-    query = createQuery(dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCores)
+    query = createQuery(dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores)
     
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
@@ -153,7 +155,7 @@ def main():
             .map(lambda r: r['cpu_percpu_percent_usage']) \
             .cache()
     
-    query = createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, hostID, nOfActiveCores)
+    query = createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores)
        
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTableCore, ttl=timedelta(hours=1))
     

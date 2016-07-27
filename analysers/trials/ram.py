@@ -61,7 +61,7 @@ def absoluteRamEfficency(sc, cassandraKeyspace, trialID, experimentID, container
     absoluteEfficency = dataIntegral/float(long(maxMemory)*dataPoints)
     return absoluteEfficency
 
-def createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, hostID):
+def createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, containerName, hostID):
     from commons import computeMode, computeMetrics
     
     mode = computeMode(dataRDD)
@@ -72,7 +72,7 @@ def createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, container
     relativeEfficency = metrics["integral"]/(metrics["max"]*metrics["num_data_points"])
     absoluteEfficency = absoluteRamEfficency(sc, cassandraKeyspace, trialID, experimentID, containerID, hostID, metrics["integral"], metrics["num_data_points"])
     
-    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "host_id":hostID, \
+    query = [{"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "container_name":containerName, "host_id":hostID, \
               "ram_mode":mode[0], "ram_mode_freq":mode[1], "ram_integral":metrics["integral"], \
               "relative_efficency":relativeEfficency, "absolute_efficency":absoluteEfficency, \
               "ram_mean":metrics["mean"], "ram_num_data_points":metrics["num_data_points"], \
@@ -89,6 +89,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     containerID = str(args["container_id"])
+    containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
@@ -106,7 +107,7 @@ def main():
             .map(lambda r: (r['memory_usage'], 1)) \
             .cache()
     
-    query = createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, hostID)
+    query = createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, containerName, hostID)
     
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     

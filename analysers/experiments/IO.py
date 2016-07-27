@@ -15,18 +15,18 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
-def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
+def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID):
     from commons import computeMode, computeMetrics
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("device", op) \
-            .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
+            .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID) \
             .filter(lambda a: a["device"] == dev and a[op] is not None) \
             .map(lambda a: (a[op], 1)) \
             .cache()
     
     if len(dataRDD.collect()) == 0:
-        return {"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "device":dev}
+        return {"experiment_id":experimentID, "container_name":containerName, "host_id":hostID, "device":dev}
         
     mode = computeMode(dataRDD)
     
@@ -35,8 +35,7 @@ def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containe
      
     metrics = computeMetrics(data)
 
-    # TODO: Fix this
-    query = {"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "device":dev, op+"_mode":mode[0], \
+    query = {"experiment_id":experimentID, "container_name":containerName, "host_id":hostID, "device":dev, op+"_mode":mode[0], \
               op+"_mode_freq":mode[1], op+"_mean":metrics["mean"], \
               op+"_min":metrics["min"], op+"_max":metrics["max"], op+"_sd":metrics["sd"], op+"_variance":metrics["variance"], \
               op+"_q1":metrics["q1"], op+"_q2":metrics["q2"], op+"_q3":metrics["q3"], op+"_p95":metrics["p95"], \
@@ -50,7 +49,7 @@ def main():
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
-    containerID = str(args["container_id"])
+    containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
@@ -63,7 +62,7 @@ def main():
     
     data = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("device") \
-            .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID) \
+            .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID) \
             .collect()
     
     devices = {}
@@ -75,9 +74,9 @@ def main():
     
     for k in devices.keys():
         query = {}
-        query.update(createQuery("reads", k, sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID))
-        query.update(createQuery("writes", k, sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID))
-        query.update(createQuery("total", k, sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID))
+        query.update(createQuery("reads", k, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID))
+        query.update(createQuery("writes", k, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID))
+        query.update(createQuery("total", k, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID))
         queries.append(query)
     
     sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))

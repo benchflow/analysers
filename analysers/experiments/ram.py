@@ -15,12 +15,12 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
     
-def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID):
+def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID):
     from commons import computeExperimentMetrics, computeModeMinMax, computeMetrics, computeLevene, computeCombinedVar
     
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_ram") \
         .select("ram_min", "ram_max", "ram_q1", "ram_q2", "ram_q3", "ram_p90", "ram_p95", "ram_p99", "ram_num_data_points", "ram_mean", "ram_me", "trial_id", "ram_integral", "ram_mode", "ram_mode_freq", "ram_variance") \
-        .where("experiment_id=? AND container_id=? AND host_id=?", experimentID, containerID, hostID)
+        .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID)
     CassandraRDD.cache()
     
     metrics = computeExperimentMetrics(CassandraRDD, "ram")
@@ -30,11 +30,11 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
 
     integralMetrics = computeMetrics(data)
     
-    levenePValue = computeLevene(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID, "memory_usage")
+    levenePValue = computeLevene(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID, "memory_usage")
     
     combinedVar = computeCombinedVar(CassandraRDD, "ram")
     
-    return [{"experiment_id":experimentID, "container_id":containerID, "host_id":hostID, "ram_mode_min":metrics["min"], "ram_mode_max":metrics["max"], \
+    return [{"experiment_id":experimentID, "container_name":containerName, "host_id":hostID, "ram_mode_min":metrics["min"], "ram_mode_max":metrics["max"], \
               "ram_mode_min_freq":metrics["mode_min_freq"], "ram_mode_max_freq":metrics["mode_max_freq"], \
               "ram_mean_min":metrics["mean_min"], "ram_mean_max":metrics["mean_max"], \
               "ram_min":metrics["min"], "ram_max":metrics["max"], "ram_q1_min":metrics["q1_min"], \
@@ -58,7 +58,7 @@ def main():
     args = json.loads(sys.argv[1])
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
-    containerID = str(args["container_id"])
+    containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
@@ -71,7 +71,7 @@ def main():
     srcTable = "trial_ram"
     destTable = "exp_ram"
     
-    query = createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerID, hostID)
+    query = createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID)
 
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
     

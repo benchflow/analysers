@@ -6,6 +6,7 @@ TRIAL_ID=camundaZZZZZZMV_ZZZZZZOX
 EXPERIMENT_ID=camundaZZZZZZMV
 CONFIG_FILE=""
 CONTAINER_ID=stats_camunda
+CONTAINER_NAME=stats_camunda
 CASSANDRA_HOST=cassandra
 HOST_NAME=docker_host
 
@@ -86,7 +87,7 @@ do
 	--conf spark.cassandra.connection.host=$CASSANDRA_HOST \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/trials/$SCRIPT.py \
-	'{"cassandra_keyspace":"benchflow", "config_file": "'$CONFIG_FILE'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
+	'{"cassandra_keyspace":"benchflow", "config_file": "'$CONFIG_FILE'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "container_name": "'$CONTAINER_NAME'", "host_id": "'$HOST_NAME'"}'
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi
@@ -103,7 +104,7 @@ do
 	--conf spark.cassandra.connection.host=$CASSANDRA_HOST \
 	--py-files $ANALYSERS_PATH/commons/commons.py,$PYSPARK_CASSANDRA_JAR_PATH \
 	$ANALYSERS_PATH/experiments/$SCRIPT.py \
-	'{"cassandra_keyspace":"benchflow", "config_file": "'$CONFIG_FILE'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "host_id": "'$HOST_NAME'"}'
+	'{"cassandra_keyspace":"benchflow", "config_file": "'$CONFIG_FILE'", "trial_id": "'$TRIAL_ID'", "experiment_id": "'$EXPERIMENT_ID'", "container_id": "'$CONTAINER_ID'", "container_name": "'$CONTAINER_NAME'", "host_id": "'$HOST_NAME'"}'
 	if [ "$?" = "1" ]; then
 		exit 1
 	fi

@@ -46,11 +46,11 @@ def maxIOValues(dataRDD):
         queries.append({"device":d, "reads":maxReads, "writes":maxWrites, "total":maxTotal})
     return queries
 
-def createQueries(dataRDD, trialID, experimentID, containerID, hostID):
+def createQueries(dataRDD, trialID, experimentID, containerID, containerName, hostID):
     queries = []
     result = maxIOValues(dataRDD)
     for e in result:
-        queries.append({"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "host_id":hostID, \
+        queries.append({"experiment_id":experimentID, "trial_id":trialID, "container_id":containerID, "container_name":containerName, "host_id":hostID, \
                         "device":e["device"], "reads":e["reads"], "writes":e["writes"], "total":e["total"]})
     return queries
 
@@ -61,6 +61,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     containerID = str(args["container_id"])
+    containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
     
@@ -77,7 +78,7 @@ def main():
             .cache()
     
     # Generate queries for devices
-    queries = createQueries(dataRDD, trialID, experimentID, containerID, hostID)
+    queries = createQueries(dataRDD, trialID, experimentID, containerID, containerName, hostID)
     
     # Save to Cassandra
     sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
