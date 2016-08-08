@@ -168,13 +168,13 @@ def main():
     
     query = createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID)
 
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
     #####################################################
     
     query = createCoreQuery(sc, cassandraKeyspace, srcTableCore, experimentID, containerName, hostID)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTableCores, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTableCores)
     
 if __name__ == '__main__':
     main()

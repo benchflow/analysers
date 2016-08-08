@@ -52,6 +52,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Process execution time trial analyser")
@@ -64,10 +65,11 @@ def main():
             .select("process_definition_id", "to_ignore", "source_process_instance_id", "start_time", "end_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .filter(lambda r: r["process_definition_id"] is not None and r["to_ignore"] is False) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
             
     query = createQuery(sc, dataRDD, experimentID, trialID)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

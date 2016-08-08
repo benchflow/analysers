@@ -71,7 +71,7 @@ def main():
     
     query = createQuery(CassandraRDD, experimentID)
 
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':
     main()

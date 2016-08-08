@@ -126,6 +126,7 @@ def main():
     containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Cpu analyser")
@@ -142,21 +143,23 @@ def main():
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .filter(lambda r: r['cpu_percent_usage'] is not None) \
             .map(lambda r: r['cpu_percent_usage']) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .collect()
     
     query = createQuery(dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("cpu_percpu_percent_usage") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .filter(lambda r: r['cpu_percpu_percent_usage'] is not None) \
             .map(lambda r: r['cpu_percpu_percent_usage']) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
     query = createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores)
        
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTableCore, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTableCore)
     
 if __name__ == '__main__': main()

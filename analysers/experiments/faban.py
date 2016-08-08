@@ -201,23 +201,23 @@ def main():
     sc = CassandraSparkContext(conf=conf)
 
     query = createTotalOpsQuery(sc, cassandraKeyspace, "faban_driver_summary", experimentID, containerID, hostID)
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_total_ops", ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_total_ops")
     
     query = createDelaysQuery(sc, cassandraKeyspace, "faban_driver_delay_times", experimentID, containerID, hostID)
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_delay_times", ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_delay_times")
     
     query = createResponseTimesQuery(sc, cassandraKeyspace, "faban_driver_response_times", experimentID, containerID, hostID)
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_ops_response_times", ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_ops_response_times")
     
     query = runInfoQuery(sc, cassandraKeyspace, "faban_run_info", experimentID, containerID, hostID)
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_run_info", ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_run_info")
     
     query = createOpsQuery(sc, cassandraKeyspace, "faban_driver_mix", experimentID, containerID, hostID)
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_ops", ttl=timedelta(hours=1))
+    sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_ops")
     
     query = createCustomStatsQuery(sc, cassandraKeyspace, "faban_driver_custom_stats", experimentID, containerID, hostID)
-    sc.parallelize(query[0]).saveToCassandra(cassandraKeyspace, "exp_faban_ops_custom_stats_target_absolute", ttl=timedelta(hours=1))
-    sc.parallelize(query[1]).saveToCassandra(cassandraKeyspace, "exp_faban_ops_custom_stats_target_statistic", ttl=timedelta(hours=1))
+    sc.parallelize(query[0]).saveToCassandra(cassandraKeyspace, "exp_faban_ops_custom_stats_target_absolute")
+    sc.parallelize(query[1]).saveToCassandra(cassandraKeyspace, "exp_faban_ops_custom_stats_target_statistic")
     
 if __name__ == '__main__':
     main()

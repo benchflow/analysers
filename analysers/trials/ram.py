@@ -92,6 +92,7 @@ def main():
     containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Ram trial analyser")
@@ -105,11 +106,12 @@ def main():
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
             .filter(lambda r: r["memory_usage"] is not None) \
             .map(lambda r: (r['memory_usage'], 1)) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
     query = createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, containerName, hostID)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':
     main()

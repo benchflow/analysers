@@ -64,6 +64,7 @@ def main():
     containerName = str(args["container_name"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("IO analyser")
@@ -75,12 +76,13 @@ def main():
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("device", "reads", "writes", "total") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
     # Generate queries for devices
     queries = createQueries(dataRDD, trialID, experimentID, containerID, containerName, hostID)
     
     # Save to Cassandra
-    sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(queries, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

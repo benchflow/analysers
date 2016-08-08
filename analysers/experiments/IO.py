@@ -79,7 +79,7 @@ def main():
         query.update(createQuery("total", k, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID))
         queries.append(query)
     
-    sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':
     main()

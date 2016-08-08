@@ -68,6 +68,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Construct duration analyser")
@@ -80,10 +81,11 @@ def main():
             .select("source_construct_instance_id", "to_ignore", "construct_name", "construct_type", "start_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .filter(lambda r: r["source_construct_instance_id"] is not None and r["to_ignore"] is False) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
     query = createQuery(sc, dataRDD, experimentID, trialID)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

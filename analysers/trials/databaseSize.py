@@ -29,6 +29,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Database size analyser")
@@ -40,10 +41,11 @@ def main():
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("size") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .repartition(sc.defaultParallelism * partitionsPerCore)
     
     query = createQuery(dataRDD, experimentID, trialID)
     
     # Saves to Cassandra
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

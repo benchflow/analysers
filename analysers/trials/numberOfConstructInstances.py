@@ -6,13 +6,14 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
-def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID):
+def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitionsPerCore):
     queries = []
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("to_ignore", "source_construct_instance_id", "construct_name", "construct_type", "start_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .filter(lambda r: r["source_construct_instance_id"] is not None and r["to_ignore"] is False) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
     numberOfInstances = dataRDD.count()
@@ -44,6 +45,7 @@ def main():
     experimentID = str(args["experiment_id"])
     configFile = str(args["config_file"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Number of construct instances analyser")
@@ -52,8 +54,8 @@ def main():
     srcTable = "construct"
     destTable = "trial_number_of_construct_instances"
         
-    query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID)
+    query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitionsPerCore)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

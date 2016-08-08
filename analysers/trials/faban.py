@@ -6,7 +6,7 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
-def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID):
+def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID, partitionsPerCore):
     from commons import computeMode, computeMetrics
     
     queries = []
@@ -14,6 +14,7 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containe
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("value", "section", "host", "op_name") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
+            .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache() \
             
     hosts = dataRDD.map(lambda a: a["host"]).distinct().collect()
@@ -51,6 +52,7 @@ def main():
     containerID = str(args["container_id"])
     hostID = str(args["host_id"])
     cassandraKeyspace = str(args["cassandra_keyspace"])
+    partitionsPerCore = 5
     
     # Set configuration for spark context
     conf = SparkConf().setAppName("Faban trial analyser")
@@ -59,9 +61,9 @@ def main():
     srcTable = "faban_details"
     destTable = "trial_faban_details"
     
-    query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID)
+    query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID, partitionsPerCore)
     
-    sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable, ttl=timedelta(hours=1))
+    sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':
     main()
