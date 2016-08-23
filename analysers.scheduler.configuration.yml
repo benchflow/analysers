@@ -1,7 +1,7 @@
 analysers_settings: 
     - requirements: "faban"
       scripts: 
-        - script_name: "faban"
+        - script_name: "faban_analyser"
           script_trial: "analysers/trials/faban.py"
           script_experiment: "analysers/experiments/faban.py"
     - requirements: "stats,properties"
