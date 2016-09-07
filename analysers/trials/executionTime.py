@@ -36,10 +36,10 @@ def createQuery(sc, dataRDD, experimentID, trialID):
     
     queries.append({"experiment_id":experimentID, "trial_id":trialID, "process_definition_id":"all", "execution_time":tp})
     
-    processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
+    processes = dataRDD.map(lambda a: a["process_name"]).distinct().collect()
     
     for process in processes:
-        tp = computeExecutionTime(dataRDD.filter(lambda r: r['process_definition_id'] == process))
+        tp = computeExecutionTime(dataRDD.filter(lambda r: r['process_name'] == process))
     
         queries.append({"experiment_id":experimentID, "trial_id":trialID, "process_definition_id":process, "execution_time":tp})
         
@@ -62,9 +62,9 @@ def main():
     destTable = "trial_execution_time"
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
-            .select("process_definition_id", "to_ignore", "source_process_instance_id", "start_time", "end_time", "duration") \
+            .select("process_name", "to_ignore", "source_process_instance_id", "start_time", "end_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-            .filter(lambda r: r["process_definition_id"] is not None and r["to_ignore"] is False) \
+            .filter(lambda r: r["process_name"] is not None and r["to_ignore"] is False) \
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
             

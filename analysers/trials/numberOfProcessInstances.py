@@ -13,9 +13,9 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitio
     queries = []
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
-            .select("process_definition_id", "source_process_instance_id", "to_ignore", "start_time", "duration") \
+            .select("process_name", "source_process_instance_id", "to_ignore", "start_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-            .filter(lambda r: r["process_definition_id"] is not None and r["to_ignore"] is False) \
+            .filter(lambda r: r["process_name"] is not None and r["to_ignore"] is False) \
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
@@ -23,10 +23,10 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitio
     
     queries.append({"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":numberOfInstances, "process_definition_id": "all"})
     
-    processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
+    processes = dataRDD.map(lambda a: a["process_name"]).distinct().collect()
     
     for process in processes:
-        numberOfInstances = dataRDD.filter(lambda a: a["process_definition_id"] == process).count()
+        numberOfInstances = dataRDD.filter(lambda a: a["process_name"] == process).count()
         queries.append({"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":numberOfInstances, "process_definition_id": process})
     
     return queries

@@ -35,10 +35,10 @@ def createQuery(sc, dataRDD, experimentID, trialID):
               "process_duration_me":metrics["me"], "process_duration_ci095_min":metrics["ci095_min"], "process_duration_ci095_max":metrics["ci095_max"], \
               "process_duration_p90":metrics["p90"], "process_duration_p99":metrics["p99"], "process_duration_percentiles":metrics["percentiles"]})
     
-    processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
+    processes = dataRDD.map(lambda a: a["process_name"]).distinct().collect()
     
     for process in processes:
-        filteredRDD = dataRDD.filter(lambda r: r['duration'] != None and r['process_definition_id'] == process).cache()
+        filteredRDD = dataRDD.filter(lambda r: r['duration'] != None and r['process_name'] == process).cache()
         
         modeRDD = filteredRDD.map(lambda r: (r['duration'], 1)) \
             .cache()
@@ -74,9 +74,9 @@ def main():
     destTable = "trial_process_duration"
     
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
-            .select("process_definition_id", "to_ignore", "source_process_instance_id", "start_time", "duration") \
+            .select("process_name", "to_ignore", "source_process_instance_id", "start_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
-            .filter(lambda r: r["process_definition_id"] is not None and r["to_ignore"] is False) \
+            .filter(lambda r: r["process_name"] is not None and r["to_ignore"] is False) \
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
