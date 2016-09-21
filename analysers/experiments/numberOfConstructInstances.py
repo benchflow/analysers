@@ -6,6 +6,7 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(dataRDD, experimentID):
     from commons import computeMode, computeMetrics
     
@@ -13,6 +14,7 @@ def createQuery(dataRDD, experimentID):
     
     combinations = dataRDD.map(lambda a: (a["construct_type"], a["construct_name"])).distinct().collect()
     
+    #Iterate over every combination of construct type and name
     for combs in combinations:
         consType = combs[0]
         name = combs[1]
@@ -49,17 +51,21 @@ def main():
     conf = SparkConf().setAppName("Number of construct instances analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "trial_number_of_construct_instances"
     destTable = "exp_number_of_construct_instances"
     
+    #Retrieving data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("number_of_construct_instances", "construct_name", "construct_type") \
             .where("experiment_id=?", experimentID) \
             .filter(lambda r: r['number_of_construct_instances'] is not None) \
             .cache()
-            
+        
+    #Creating query for Cassandra    
     query = createQuery(dataRDD, experimentID)
     
+    #Saving to Cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':

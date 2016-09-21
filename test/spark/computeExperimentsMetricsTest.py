@@ -1,6 +1,7 @@
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Test for data set with no elements
 def testEmpty(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
@@ -30,7 +31,8 @@ def testEmpty(sc):
     assert result["best"] is None, "Experiment metric value incorrect, expected None"
     assert result["worst"] is None, "Experiment metric value incorrect, expected None"
     assert result["average"] is None, "Experiment metric value incorrect, expected None"
-    
+
+#Test for data set with one element 
 def testOneElement(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
@@ -62,7 +64,8 @@ def testOneElement(sc):
     assert result["best"] == ["foo_1"], "Experiment metric value incorrect, expected foo_1"
     assert result["worst"] == ["foo_1"], "Experiment metric value incorrect, expected foo_1"
     assert result["average"] == ["foo_1"], "Experiment metric value incorrect, expected foo_1"
-    
+
+#Test for data set with two elements 
 def testTwoElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
@@ -97,7 +100,8 @@ def testTwoElements(sc):
     assert result["best"] == ["foo_1"], "Experiment metric value incorrect, expected foo_1"
     assert result["worst"] == ["foo_2"], "Experiment metric value incorrect, expected foo_2"
     assert result["average"] == ["foo_1", "foo_2"], "Experiment metric value incorrect, expected foo_1 and foo_2"
-    
+
+#Test for data set with three elements    
 def testThreeElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
@@ -136,6 +140,7 @@ def testThreeElements(sc):
     assert result["worst"] == ["foo_3"], "Experiment metric value incorrect, expected foo_3"
     assert result["average"] == ["foo_2"], "Experiment metric value incorrect, expected foo_2"
     
+#Test for data set with four elements
 def testFourElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     
@@ -176,7 +181,8 @@ def testFourElements(sc):
     assert result["best"] == ["foo_1"], "Experiment metric value incorrect, expected foo_1"
     assert result["worst"] == ["foo_4"], "Experiment metric value incorrect, expected foo_4"
     assert result["average"] == ["foo_2", "foo_3"], "Experiment metric value incorrect, expected foo_2, foo_3"
-    
+
+#Test for data set with elements all equal    
 def testAllSameElements(sc):
     from commons import computeExperimentMetrics, computeModeMinMax
     

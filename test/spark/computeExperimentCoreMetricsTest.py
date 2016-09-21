@@ -2,6 +2,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Test for empty data set
 def testEmpty(sc):
     from cpu import computeExperimentCoreMetrics
     
@@ -21,7 +22,8 @@ def testEmpty(sc):
     assert result["q3_min"] is None, "Experiment metric value incorrect, expected None"
     assert result["q3_max"] is None, "Experiment metric value incorrect, expected None"
     assert result["weighted_avg"] is None, "Experiment metric value incorrect, expected None"
-    
+ 
+#Test for data set with one element   
 def testOneElement(sc):
     from cpu import computeExperimentCoreMetrics
     
@@ -44,7 +46,8 @@ def testOneElement(sc):
     assert result["q3_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["q3_max"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["weighted_avg"] == 1, "Experiment metric value incorrect, expected 1"
-    
+
+#Test for data set with two elements
 def testTwoElements(sc):
     from cpu import computeExperimentCoreMetrics
     
@@ -71,7 +74,8 @@ def testTwoElements(sc):
     assert result["q3_min"] == 1, "Experiment metric value incorrect, expected 1"
     assert result["q3_max"] == 2, "Experiment metric value incorrect, expected 2"
     assert result["weighted_avg"] == 1.5, "Experiment metric value incorrect, expected 1.5"
-    
+
+#Test for data set with null elements
 def testNullElements(sc):
     from cpu import computeExperimentCoreMetrics
     

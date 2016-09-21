@@ -2,6 +2,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Test with no elements
 def testEmpty(sc):
     from commons import computeMode
     
@@ -12,7 +13,8 @@ def testEmpty(sc):
     result = computeMode(dataRDD)
     assert result[0] is None, "Mode value incorrect, expected None"
     assert result[1] is None, "Mode frequency incorrect, expected None"
-    
+
+#Test for data set with one element    
 def testOneElement(sc):
     from commons import computeMode
     
@@ -24,6 +26,7 @@ def testOneElement(sc):
     assert result[0][0] == 1, "Mode value incorrect, expected 1"
     assert result[1] == 1, "Mode frequency incorrect, expected 1"
 
+#Test for data set with mode being a single value
 def testSingleValueMode(sc):
     from commons import computeMode
     
@@ -34,7 +37,8 @@ def testSingleValueMode(sc):
     result = computeMode(dataRDD)
     assert result[0][0] == 1, "Mode value incorrect, expected 1"
     assert result[1] == 2, "Mode frequency incorrect, expected 2"
-    
+
+#Test for data set with mode being a multiple values
 def testMultipleValuesMode(sc):
     from commons import computeMode
     
@@ -46,7 +50,8 @@ def testMultipleValuesMode(sc):
     assert 2 in result[0], "Mode value incorrect, expected 2, 1"
     assert 1 in result[0], "Mode value incorrect, expected 2, 1"
     assert result[1] == 1, "Mode frequency incorrect, expected 1"
-    
+
+#Test for data set with mode being a large value    
 def testLargeMode(sc):
     from commons import computeMode
     

@@ -13,6 +13,7 @@ from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 from pyspark import SparkFiles
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, cassandraKeyspace, experimentID, trialID, partitionsPerCore):
     queries = []
     
@@ -39,6 +40,7 @@ def createQuery(sc, cassandraKeyspace, experimentID, trialID, partitionsPerCore)
     
     processes = execTimes.map(lambda a: a["process_definition_id"]).distinct().collect()
     
+    #Iterate over all process definitions
     for process in processes:
         npr = numProcesses.filter(lambda r: r["process_definition_id"] == process).first()["number_of_process_instances"]
         
@@ -64,10 +66,13 @@ def main():
     conf = SparkConf().setAppName("Process throughput trial analyser")
     sc = CassandraSparkContext(conf=conf)
     
+    #Destination table
     destTable = "trial_throughput"
-            
+    
+    #Create Cassandra table
     query = createQuery(sc, cassandraKeyspace, experimentID, trialID, partitionsPerCore)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

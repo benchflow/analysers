@@ -11,6 +11,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(CassandraRDD, experimentID):
     from commons import computeExperimentMetrics, computeModeMinMax, computeCombinedVar
     
@@ -18,6 +19,7 @@ def createQuery(CassandraRDD, experimentID):
     
     processes = CassandraRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
     
+    #Iterating over all process definitions
     for process in processes:
         dataRDD = CassandraRDD.filter(lambda a: a["process_definition_id"] == process)
         metrics = computeExperimentMetrics(dataRDD, "process_duration")
@@ -50,9 +52,11 @@ def main():
     conf = SparkConf().setAppName("Process duration analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "trial_process_duration"
     destTable = "exp_process_duration"
     
+    #Retrieving data for computations
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("process_duration_min", "process_duration_max", "process_duration_q1", "process_duration_q2", "process_duration_q3", \
                 "process_duration_p95", "process_duration_num_data_points", "process_duration_mean", \
@@ -61,8 +65,10 @@ def main():
         .where("experiment_id=?", experimentID)
     CassandraRDD.cache()
     
+    #Creating Cassandra query
     query = createQuery(CassandraRDD, experimentID)
 
+    #Save to Cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Test with no data
 def testEmpty(sc):
     from IO import maxIOValues
     
@@ -10,7 +11,8 @@ def testEmpty(sc):
         
     result = maxIOValues(dataRDD)
     assert len(result) == 0, "IO value incorrect, expected 0"
-    
+
+#Test for data with one element
 def testOneElement(sc):
     from IO import maxIOValues
     
@@ -23,7 +25,8 @@ def testOneElement(sc):
     assert result[0]["reads"] == 5, "IO value incorrect, expected 5"
     assert result[0]["writes"] == 5, "IO value incorrect, expected 5"
     assert result[0]["total"] == 10, "IO value incorrect, expected 10"
-    
+ 
+#Test for data with two elements   
 def testTwoElements(sc):
     from IO import maxIOValues
     
@@ -38,6 +41,7 @@ def testTwoElements(sc):
     assert result[0]["writes"] == 6, "IO value incorrect, expected 6"
     assert result[0]["total"] == 12, "IO value incorrect, expected 12"
     
+#Test for data with many devices 
 def testManyDevices(sc):
     from IO import maxIOValues
     
@@ -61,7 +65,8 @@ def testManyDevices(sc):
             assert d["reads"] == 8, "IO value incorrect, expected 8"
             assert d["writes"] == 8, "IO value incorrect, expected 8"
             assert d["total"] == 16, "IO value incorrect, expected 16"
-            
+
+#Test for data with null values            
 def testNullValues(sc):
     from IO import maxIOValues
     

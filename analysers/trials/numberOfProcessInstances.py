@@ -9,9 +9,11 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitionsPerCore):
     queries = []
     
+    #Obtain data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("process_definition_id", "source_process_instance_id", "to_ignore", "start_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
@@ -25,6 +27,7 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitio
     
     processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
     
+    #Iterate over all process definitions
     for process in processes:
         numberOfInstances = dataRDD.filter(lambda a: a["process_definition_id"] == process).count()
         queries.append({"experiment_id":experimentID, "trial_id":trialID, "number_of_process_instances":numberOfInstances, "process_definition_id": process})
@@ -44,11 +47,14 @@ def main():
     conf = SparkConf().setAppName("Number of process instances analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "process"
     destTable = "trial_number_of_process_instances"
-        
+    
+    #Create Cassandra query
     query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, partitionsPerCore)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

@@ -15,6 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(dataRDD, experimentID):
     from commons import computeMode, computeMetrics
     
@@ -42,18 +43,22 @@ def main():
     conf = SparkConf().setAppName("Number of process instances analyser")
     sc = CassandraSparkContext(conf=conf)
     
+    #Source and destination tables
     srcTable = "trial_byte_size"
     destTable = "exp_byte_size"
     
+    #Retrieve data for the computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("size") \
             .where("experiment_id=?", experimentID) \
             .filter(lambda r: r['size'] is not None) \
             .map(lambda r: (r['size'], 1)) \
             .cache()
-            
+    
+    #Prepare queries for Cassandra  
     query = createQuery(dataRDD, experimentID)
     
+    #Save to Cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':

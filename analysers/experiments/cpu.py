@@ -15,6 +15,8 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Function for sorting and retrieving the min and max values for the cpu usage of a given core i, given RDD of the data, the data field,
+#and the order (ascending or not ascending)
 def sortAndGetCore(CassandraRDD, field, asc, i):
         if asc == 1:
             v = CassandraRDD.map(lambda x: x[field][i]) \
@@ -24,7 +26,9 @@ def sortAndGetCore(CassandraRDD, field, asc, i):
                 .max()
         return v
 
+#Compute experiment metrics for CPU core i
 def computeExperimentCoreMetrics(CassandraRDD, i):
+    #If no data return None values
     if CassandraRDD.isEmpty():
         return {"min":None, "max":None, "q1_min":None, \
               "q1_max":None, "q2_min":None, "q2_max":None, \
@@ -69,28 +73,37 @@ def computeExperimentCoreMetrics(CassandraRDD, i):
               "p99_max":p99Max, "p99_min":p99Min, \
               "q3_min":q3Min, "q3_max":q3Max, "weighted_avg":weightedMean}
     
- 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID):
     from commons import computeExperimentMetrics, computeMetrics, computeLevene, computeCombinedVar
     
+    #Retrieve the data for the computations
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_variance", "cpu_me", "trial_id", "cpu_integral", "cpu_cores") \
         .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID)
     CassandraRDD.cache()
     
+    #Get number of active cpu cores
     CassandraRDDFirst = CassandraRDD.first()
+    
+    #Get number of total cpu cores
     nOfActiveCores = CassandraRDDFirst["cpu_cores"]
     
+    #Compute metrics
     metrics = computeExperimentMetrics(CassandraRDD, "cpu")
     
+    #Compute integral metrics
     data = CassandraRDD.map(lambda x: x["cpu_integral"]).collect()
 
     integralMetrics = computeMetrics(data)
     
+    #Compute Levene
     levenePValue = computeLevene(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID, "cpu_percent_usage")
     
+    #Compute combined variance
     combinedVar = computeCombinedVar(CassandraRDD, "cpu")
     
+    #Construct query
     return [{"experiment_id":experimentID, "container_name":containerName, "host_id":hostID, "cpu_cores":nOfActiveCores, \
               "cpu_min":metrics["min"], "cpu_max":metrics["max"], "cpu_q1_min":metrics["q1_min"], \
               "cpu_q1_max":metrics["q1_max"], "cpu_q2_min":metrics["q2_min"], "cpu_q2_max":metrics["q2_max"], \
@@ -107,20 +120,25 @@ def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, contai
               "cpu_levene_test_mean":levenePValue["levene_mean"], "cpu_levene_test_median":levenePValue["levene_median"], "cpu_levene_test_trimmed":levenePValue["levene_trimmed"], \
               "cpu_levene_test_mean_stat":levenePValue["levene_mean_stat"], "cpu_levene_test_median_stat":levenePValue["levene_median_stat"], "cpu_levene_test_trimmed_stat":levenePValue["levene_trimmed_stat"], \
               "cpu_variation_coefficient": metrics["variation_coefficient"], "cpu_combined_variance": combinedVar}]
-    
+
+#Create the queries containg the results of the computations to pass to Cassandra for the individual CPU cores 
 def createCoreQuery(sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID):
     from commons import getHostCores, computeCombinedVar
     
+    #Retrieve data for the computations
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
         .select("cpu_min", "cpu_max", "cpu_q1", "cpu_q2", "cpu_q3", "cpu_p90", "cpu_p95", "cpu_p99", "cpu_num_data_points", "cpu_mean", "cpu_me", "trial_id", "cpu_cores", "cpu_variance") \
         .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID)
     CassandraRDD.cache()
     
+    #Retrieve number of active cores
     CassandraRDDFirst = CassandraRDD.first()
     nOfActiveCores = CassandraRDDFirst["cpu_cores"]
-                
+      
+    #Retrieve total number of cores          
     nOfCores = getHostCores(sc, cassandraKeyspace, hostID)
     
+    #Prepare query
     query = [{"experiment_id":experimentID, "container_name":containerName, "host_id":hostID, "cpu_cores":nOfActiveCores, \
               "cpu_min":[None]*nOfCores, "cpu_max":[None]*nOfCores, "cpu_q1_min":[None]*nOfCores, \
               "cpu_q1_max":[None]*nOfCores, "cpu_q2_min":[None]*nOfCores, "cpu_q2_max":[None]*nOfCores, \
@@ -128,7 +146,9 @@ def createCoreQuery(sc, cassandraKeyspace, srcTable, experimentID, containerName
               "cpu_q3_min":[None]*nOfCores, "cpu_q3_max":[None]*nOfCores, "cpu_weighted_avg":[None]*nOfCores, \
               "cpu_combined_variance":[None]*nOfCores}]
     
+    #Fill in query with the computed metrics
     for i in range(nOfCores):
+        #Compute metrics for the core
         coreMetrics = computeExperimentCoreMetrics(CassandraRDD, i)
         combinedVar = computeCombinedVar(CassandraRDD, "cpu", i)
         
@@ -160,20 +180,25 @@ def main():
     conf = SparkConf().setAppName("cpu analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     dataTable = "environment_data"
     srcTable = "trial_cpu"
     srcTableCore = "trial_cpu_core"
     destTable = "exp_cpu"
     destTableCores = "exp_cpu_core"
     
+    #Create queries for the overall cpu usage
     query = createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID)
 
+    #Save to cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
 
     #####################################################
     
+    #Create queries for the per core cpu usage
     query = createCoreQuery(sc, cassandraKeyspace, srcTableCore, experimentID, containerName, hostID)
     
+    #Save to cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTableCores)
     
 if __name__ == '__main__':

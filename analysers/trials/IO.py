@@ -9,10 +9,12 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Obtain max IO values from the data
 def maxIOValues(dataRDD):
     if(dataRDD.isEmpty()):
         return []
     
+    #Function for reduce operation to obtain highest of two values
     def whichHigher(a, b):
         if a is None or b is None:
             return None
@@ -30,6 +32,7 @@ def maxIOValues(dataRDD):
     
     queries = []
     
+    #Iterate over all devices
     for d in devices.keys():
         maxReads = dataRDD.filter(lambda a: a["device"] == d) \
             .map(lambda a: a["reads"]) \
@@ -46,6 +49,7 @@ def maxIOValues(dataRDD):
         queries.append({"device":d, "reads":maxReads, "writes":maxWrites, "total":maxTotal})
     return queries
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQueries(dataRDD, trialID, experimentID, containerID, containerName, hostID):
     queries = []
     result = maxIOValues(dataRDD)
@@ -70,9 +74,11 @@ def main():
     conf = SparkConf().setAppName("IO analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "io_data"
     destTable = "trial_io"
     
+    #Obtain data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("device", "reads", "writes", "total") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \

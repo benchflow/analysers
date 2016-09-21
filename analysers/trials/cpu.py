@@ -15,6 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Get the number of active cpu cores
 def getActiveCores(sc, cassandraKeyspace, srcTable, trialID, experimentID, containerID, hostID):
     from commons import getHostCores
     
@@ -45,6 +46,7 @@ def getActiveCores(sc, cassandraKeyspace, srcTable, trialID, experimentID, conta
         nOfCpus = getHostCores(sc, cassandraKeyspace, hostID)
         return nOfCpus
 
+#Create the queries containg the results of the computations to pass to Cassandra for overall cpu usage
 def createQuery(dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores):
     from commons import computeMetrics
     
@@ -63,6 +65,7 @@ def createQuery(dataRDD, experimentID, trialID, containerID, containerName, host
     
     return query
 
+#Create the queries containg the results of the computations to pass to Cassandra for individual cpu cores usage
 def createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores):
     from commons import computeMetrics, getHostCores
                 
@@ -132,12 +135,14 @@ def main():
     conf = SparkConf().setAppName("Cpu analyser")
     sc = CassandraSparkContext(conf=conf)
     
+    #Source and destination tables
     srcTable = "environment_data"
     destTable = "trial_cpu"
     destTableCore = "trial_cpu_core"
     
     nOfActiveCores = getActiveCores(sc, cassandraKeyspace, srcTable, trialID, experimentID, containerID, hostID)
     
+    #Retrieving data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("cpu_percent_usage") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
@@ -146,10 +151,17 @@ def main():
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .collect()
     
+    #Create Cassandra query for overall cpu usage
     query = createQuery(dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
+    
+    ###################################################################################################################
+    
+    
+     #Retrieving data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("cpu_percpu_percent_usage") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
@@ -158,8 +170,10 @@ def main():
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
+    #Create Cassandra query for per cpu core usage
     query = createCoresQuery(sc, cassandraKeyspace, dataRDD, experimentID, trialID, containerID, containerName, hostID, nOfActiveCores)
-       
+      
+    #Save to Cassandra 
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTableCore)
     
 if __name__ == '__main__': main()

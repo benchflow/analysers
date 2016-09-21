@@ -13,6 +13,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, dataRDD, experimentID, trialID):
     from commons import computeMode, computeMetrics
     
@@ -37,6 +38,7 @@ def createQuery(sc, dataRDD, experimentID, trialID):
     
     processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
     
+    #Iterate over all process definitions
     for process in processes:
         filteredRDD = dataRDD.filter(lambda r: r['duration'] != None and r['process_definition_id'] == process).cache()
         
@@ -70,9 +72,11 @@ def main():
     conf = SparkConf().setAppName("Process duration analyser")
     sc = CassandraSparkContext(conf=conf)
     
+    #Source and destination tables
     srcTable = "process"
     destTable = "trial_process_duration"
     
+    #Obtain data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("process_definition_id", "to_ignore", "source_process_instance_id", "start_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
@@ -80,8 +84,10 @@ def main():
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
+    #Create Cassandra query
     query = createQuery(sc, dataRDD, experimentID, trialID)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

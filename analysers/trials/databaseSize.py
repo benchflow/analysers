@@ -9,6 +9,7 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Compute overall database size
 def databaseSize(dataRDD):
     if dataRDD.isEmpty():
         return None
@@ -17,7 +18,8 @@ def databaseSize(dataRDD):
         return data
     else:
         return data["size"]
-    
+
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(dataRDD, experimentID, trialID):
     size = databaseSize(dataRDD)
     return [{"experiment_id":experimentID, "trial_id":trialID, "size":size}]
@@ -35,14 +37,17 @@ def main():
     conf = SparkConf().setAppName("Database size analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "database_sizes"
     destTable = "trial_byte_size"
     
+    #Obtain data for the computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("size") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .repartition(sc.defaultParallelism * partitionsPerCore)
     
+    #Create query for Cassandra
     query = createQuery(dataRDD, experimentID, trialID)
     
     # Saves to Cassandra

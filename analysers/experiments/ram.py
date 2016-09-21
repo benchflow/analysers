@@ -15,9 +15,11 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
     
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID):
     from commons import computeExperimentMetrics, computeModeMinMax, computeMetrics, computeLevene, computeCombinedVar
     
+    #Retrieving data for Cassandra computations
     CassandraRDD = sc.cassandraTable(cassandraKeyspace, "trial_ram") \
         .select("ram_min", "ram_max", "ram_q1", "ram_q2", "ram_q3", "ram_p90", "ram_p95", "ram_p99", "ram_num_data_points", "ram_mean", "ram_me", "trial_id", "ram_integral", "ram_mode", "ram_mode_freq", "ram_variance") \
         .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID)
@@ -66,13 +68,16 @@ def main():
     conf = SparkConf().setAppName("Ram analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables and keyspace
     cassandraKeyspace = "benchflow"
     dataTable = "environment_data"
     srcTable = "trial_ram"
     destTable = "exp_ram"
     
+    #Creating Cassandra query
     query = createQuery(sc, cassandraKeyspace, srcTable, dataTable, experimentID, containerName, hostID)
 
+    #Save to Cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':
