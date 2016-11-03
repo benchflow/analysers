@@ -7,6 +7,7 @@ import scipy.special as special
 import numpy as np
 import yaml
 
+#Function to retrieve the number of cores of the cpu on the host
 def getHostCores(sc, cassandraKeyspace, hostID):
     hostProperties = sc.cassandraTable(cassandraKeyspace, "host_properties") \
                 .select("n_cpu") \
@@ -17,6 +18,7 @@ def getHostCores(sc, cassandraKeyspace, hostID):
     
     return nOfCores
 
+#Function to retrieve the configuration file for analysers (YAML format) using the config file name
 def getAnalyserConfiguration(configFile):
     from pyspark_cassandra import CassandraSparkContext
     from pyspark_cassandra import RowFormat
@@ -29,7 +31,9 @@ def getAnalyserConfiguration(configFile):
         SUTConf = yaml.load(f)
     return analyserConf
 
+#Function to compute the trial level metrics given an array containing the data
 def computeMetrics(data):
+    #Return None if there is no data to work with
     if len(data) == 0:
         return {"median":None, "mean":None, "integral":None, "num_data_points":0, \
               "min":None, "max":None, "sd":None, "q1":None, "q2":None, "q3":None, "p90":None, "p95":None, "p99":None, "me":None, \
@@ -38,6 +42,7 @@ def computeMetrics(data):
     dataMin = np.min(data).item()
     dataMax = np.max(data).item()
     dataLength = len(data)
+    #Filling in a percentiles array with all the percentiles from 0 to 100 (0 is the first value)
     percentilesIndexes = range(0, 101)
     percentilesNp = np.percentile(data, percentilesIndexes)
     percentiles = []
@@ -58,11 +63,14 @@ def computeMetrics(data):
     CIHigh = mean + marginError
     dataIntegral = integrate.trapz(data).item()
 
+    #Returns a dictionary with the computed metrics
     return {"mean":mean, "integral":dataIntegral, "num_data_points":dataLength, \
               "min":dataMin, "max":dataMax, "sd":stdD, "variance": variance, "q1":q1, "q2":q2, "q3":q3, "p95":p95, "me":marginError, \
               "ci095_min":CILow, "ci095_max":CIHigh, "p90":p90, "p99":p99, "percentiles": percentiles}
     
+#Computing the experiment level metrics, given the RDD containing the data, and the name of the data (eg. ram, cpu, ...)
 def computeExperimentMetrics(CassandraRDD, dataName):
+    #If there is no data to work with return None
     if CassandraRDD.isEmpty():
         return {"median_min":None, "median_max":None, \
               "mean_min":None, "mean_max":None, \
@@ -75,6 +83,8 @@ def computeExperimentMetrics(CassandraRDD, dataName):
               "best": None, "worst": None, "average": None, \
               "variation_coefficient": None}
     
+    #Function for sorting and getting the min or max, using RDD with the data, the data field to retrieve, 
+    #and the way to sort (ascending or not)
     def sortAndGet(CassandraRDD, field, asc):
         if asc == 1:
             v = CassandraRDD.map(lambda x: x[field]) \
@@ -99,9 +109,11 @@ def computeExperimentMetrics(CassandraRDD, dataName):
     p99Min = sortAndGet(CassandraRDD, dataName+"_p99", 1)
     p99Max = sortAndGet(CassandraRDD, dataName+"_p99", 0)
     
+    #Computations of the coefficient of variation
     means = CassandraRDD.map(lambda a: a[dataName+'_mean']).collect()
     coefficientOfVariation = stats.variation(means).item()*100
     
+    #Computations of the weighted mean
     weightSum = CassandraRDD.map(lambda x: x[dataName+"_num_data_points"]) \
         .reduce(lambda a, b: a+b)
         
@@ -110,6 +122,7 @@ def computeExperimentMetrics(CassandraRDD, dataName):
     
     weightedMean = weightedSum/float(weightSum)
 
+    #Computations of the best trial
     meanMin = sortAndGet(CassandraRDD, dataName+"_mean", 1)
     meMin = CassandraRDD.filter(lambda x: x[dataName+"_mean"] == meanMin) \
         .map(lambda x: (x[dataName+"_me"], 0)) \
@@ -120,6 +133,7 @@ def computeExperimentMetrics(CassandraRDD, dataName):
         .map(lambda x: x["trial_id"]) \
         .collect()
     
+    #Computations of the worst trial
     meanMax = sortAndGet(CassandraRDD, dataName+"_mean", 0)
     meMax = CassandraRDD.filter(lambda x: x[dataName+"_mean"] == meanMax) \
         .map(lambda x: (x[dataName+"_me"], 0)) \
@@ -130,6 +144,7 @@ def computeExperimentMetrics(CassandraRDD, dataName):
         .map(lambda x: x["trial_id"]) \
         .collect()
         
+    #Computations of the average trial
     meanAverage = CassandraRDD.map(lambda x: (x[dataName+"_mean"], 1)) \
         .reduce(lambda a, b: (a[0]+b[0],a[1]+b[1]))
     meanAverage = meanAverage[0]/float(meanAverage[1])
@@ -150,7 +165,7 @@ def computeExperimentMetrics(CassandraRDD, dataName):
         .map(lambda x: x["trial_id"]) \
         .collect()
     
-    # TODO: Fix this
+    #Returns the computed metrics as a dictionary
     return {"mean_min":meanMin, "mean_max":meanMax, \
               "min":dataMin, "max":dataMax, "q1_min":q1Min, \
               "q1_max":q1Max, "q2_min":q2Min, "q2_max":q2Max, \
@@ -161,17 +176,22 @@ def computeExperimentMetrics(CassandraRDD, dataName):
               "best": bestTrials, "worst": worstTrials, "average": averageTrials, \
               "variation_coefficient": coefficientOfVariation}
 
+#Perform Levene's test for homogeneity of variances, given Spark Context, Cassandra keyspace, the experiment table of the data, the raw data table,
+#experiment id, container name, host id and name of the data
 def computeLevene(sc, cassandraKeyspace, expTable, dataTable, experimentID, containerName, hostID, dataName):
+    #Get list of trials
     trials = sc.cassandraTable(cassandraKeyspace, expTable) \
             .select("trial_id") \
             .where("experiment_id=?", experimentID) \
             .map(lambda a: a["trial_id"]) \
             .distinct() \
             .collect()
+    #If not enough trials, return None values
     if len(trials) < 2:
         return {"levene_mean":None, "levene_median":None, "levene_trimmed":None, \
                 "levene_mean_stat":None, "levene_median_stat":None, "levene_trimmed_stat":None}
     try:
+        #Collect samples and perform the test with the 3 ways of doing it: mean, median and trimmed mean
         samples = []
         for trial in trials:
             sample = sc.cassandraTable(cassandraKeyspace, dataTable) \
@@ -189,12 +209,14 @@ def computeLevene(sc, cassandraKeyspace, expTable, dataTable, experimentID, cont
         print "Could not compute levene test for " + dataName
         return {"levene_mean":None, "levene_median":None, "levene_trimmed":None, \
                 "levene_mean_stat":None, "levene_median_stat":None, "levene_trimmed_stat":None}
-    
+ 
+#Compute the mode, which can be either one value or more, using the RDD containing the data   
 def computeMode(dataRDD):
     from pyspark_cassandra import CassandraSparkContext
     from pyspark_cassandra import RowFormat
     from pyspark import SparkConf
     
+    #If no data return None values
     if dataRDD.isEmpty():
         return (None, None)
     
@@ -212,7 +234,9 @@ def computeMode(dataRDD):
             break
     return (mode, highestCount)
 
+#Compute the minimum and maximum modes, given the data RDD and the name of the data
 def computeModeMinMax(CassandraRDD, dataName):
+    #If no data return None values
     if CassandraRDD.isEmpty():
         return {"mode_min":None, "mode_max":None, \
               "mode_min_freq":None, "mode_max_freq":None}
@@ -251,6 +275,8 @@ def computeCombinedVar(dataRDD, dataName, i=None):
     combinedVar = (sumOfSquares - sumN * grandMean**2)/(sumN - 1)
     return combinedVar
 
+#Function previously used to cut N initial processes before analysis for processes.
+#NO LONGER BEING USED, LEFT HERE JUST IN CASE
 def cutNInitialProcesses(dataRDD, nToIgnore):
     from pyspark_cassandra import CassandraSparkContext
     from pyspark_cassandra import RowFormat

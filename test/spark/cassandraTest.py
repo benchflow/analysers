@@ -27,6 +27,7 @@ def main():
         .set("spark.cassandra.connection.host", "cassandra")
     sc = CassandraSparkContext(conf=conf)
     
+    #Testing that tables contain data (counting at least one value)
     data = sc.cassandraTable(cassandraKeyspace, "trial_io")\
             .select("trial_id") \
             .where("trial_id=? AND experiment_id=? AND container_name=? AND host_id=?", trialID, experimentID, containerName, hostID) \

@@ -15,6 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(dataRDD, experimentID):
     from commons import computeMode, computeMetrics
     
@@ -22,6 +23,7 @@ def createQuery(dataRDD, experimentID):
     
     processes = dataRDD.map(lambda a: a["process_definition_id"]).distinct().collect()
     
+    #Iterating over all process definitions
     for process in processes:
         mode = computeMode(dataRDD.filter(lambda a: a["process_definition_id"] == process).map(lambda r: (r['number_of_process_instances'], 1)))
     
@@ -49,17 +51,21 @@ def main():
     conf = SparkConf().setAppName("Number of process instances analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "trial_number_of_process_instances"
     destTable = "exp_number_of_process_instances"
     
+    #Retrieving data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("number_of_process_instances", "process_definition_id") \
             .where("experiment_id=?", experimentID) \
             .filter(lambda r: r['number_of_process_instances'] is not None) \
             .cache()
-            
+    
+    #Creating the Cassandra query
     query = createQuery(dataRDD, experimentID)
     
+    #Save to Cassandra
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':

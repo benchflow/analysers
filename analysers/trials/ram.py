@@ -15,6 +15,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Return the byte size from the string defining the memory limit of a container (eg. 2g, 2gb, ...) 
 def byteSizeFromString(arg):
     arg = arg.replace(" ", "")
     mUnit = ""
@@ -39,7 +40,7 @@ def byteSizeFromString(arg):
     else:
         return long(arg[:-2])
         
-
+#Compute the absolute efficiency of the RAM
 def absoluteRamEfficency(sc, cassandraKeyspace, trialID, experimentID, containerID, hostID, dataIntegral, dataPoints):
     # Taking from the container properties
     containerProperties = sc.cassandraTable(cassandraKeyspace, "container_properties") \
@@ -61,6 +62,7 @@ def absoluteRamEfficency(sc, cassandraKeyspace, trialID, experimentID, container
     absoluteEfficency = dataIntegral/float(long(maxMemory)*dataPoints)
     return absoluteEfficency
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, containerName, hostID):
     from commons import computeMode, computeMetrics
     
@@ -98,9 +100,11 @@ def main():
     conf = SparkConf().setAppName("Ram trial analyser")
     sc = CassandraSparkContext(conf=conf)
     
+    #Source and destination tables
     srcTable = "environment_data"
     destTable = "trial_ram"
     
+    #Obtain data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("memory_usage") \
             .where("trial_id=? AND experiment_id=? AND container_id=? AND host_id=?", trialID, experimentID, containerID, hostID) \
@@ -109,8 +113,10 @@ def main():
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
     
+    #Create Cassandra query
     query = createQuery(dataRDD, sc, cassandraKeyspace, experimentID, trialID, containerID, containerName, hostID)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':

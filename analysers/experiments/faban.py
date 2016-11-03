@@ -8,6 +8,7 @@ import numpy as np
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
     
+#Create query for the total operations metrics
 def createTotalOpsQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     from commons import computeExperimentMetrics, computeModeMinMax, computeMetrics, computeLevene
     
@@ -27,6 +28,7 @@ def createTotalOpsQuery(sc, cassandraKeyspace, srcTable, experimentID, container
         
     return queries
 
+#Create query for the operations metrics
 def createOpsQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     from commons import computeMetrics, computeMode
     
@@ -57,6 +59,7 @@ def createOpsQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, h
         queries.append(query)
     return queries
 
+#Create query for the delay times metrics
 def createDelaysQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     from commons import computeMetrics, computeMode
     
@@ -85,6 +88,7 @@ def createDelaysQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID
         queries.append(query)
     return queries
 
+#Create query for the run informations metrics
 def runInfoQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     from commons import computeMetrics, computeMode
     
@@ -116,6 +120,7 @@ def runInfoQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hos
         queries.append(query)
     return queries
 
+#Create query for the response times metrics
 def createResponseTimesQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     queries = []
     
@@ -142,7 +147,7 @@ def createResponseTimesQuery(sc, cassandraKeyspace, srcTable, experimentID, cont
         queries.append(query)
     return queries
         
-
+#Create query for the custom stats metrics
 def createCustomStatsQuery(sc, cassandraKeyspace, srcTable, experimentID, containerID, hostID):
     from commons import computeMetrics, computeMode
     
@@ -200,6 +205,7 @@ def main():
     conf = SparkConf().setAppName("Faban analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Prepare queries for Cassandra and save to Cassandra
     query = createTotalOpsQuery(sc, cassandraKeyspace, "faban_driver_summary", experimentID, containerID, hostID)
     sc.parallelize(query).saveToCassandra(cassandraKeyspace, "exp_faban_total_ops")
     

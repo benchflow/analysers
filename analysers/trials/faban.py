@@ -6,11 +6,13 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID, partitionsPerCore):
     from commons import computeMode, computeMetrics
     
     queries = []
     
+    #Obtain data for computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("value", "section", "host", "op_name") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
@@ -22,6 +24,7 @@ def createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containe
     operations = dataRDD.map(lambda a: a["op_name"]).distinct().collect()
     sections = ["WebDriver Throughput", "WebDriver Response Times"]
     
+    #Iterate over hosts, sections and operations
     for host in hosts:
         for section in sections:
             for operation in operations:
@@ -58,11 +61,14 @@ def main():
     conf = SparkConf().setAppName("Faban trial analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "faban_details"
     destTable = "trial_faban_details"
     
+    #Create Cassandra query
     query = createQuery(sc, cassandraKeyspace, srcTable, experimentID, trialID, containerID, hostID, partitionsPerCore)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 import datetime
 
+#Test for no data
 def testEmpty(sc):
     from throughput import computeThroughput
     
@@ -11,7 +12,8 @@ def testEmpty(sc):
         
     result = computeThroughput(dataRDD)
     assert result == (None, None), "Throughput value incorrect"
-    
+
+#Test for data with one element    
 def testOneElement(sc):
     from throughput import computeThroughput
     
@@ -21,7 +23,8 @@ def testOneElement(sc):
         
     result = computeThroughput(dataRDD)
     assert result == 1, "Throughput value incorrect, expected 1"
-    
+
+#Test for data with two elements    
 def testTwoElements(sc):
     from throughput import computeThroughput
     
@@ -32,7 +35,8 @@ def testTwoElements(sc):
         
     result = computeThroughput(dataRDD)
     assert result == 0.5, "Throughput value incorrect, expected 0.5"
-    
+
+#Test for data with some null times    
 def testSomeNullTimes(sc):
     from throughput import computeThroughput
     
@@ -43,7 +47,8 @@ def testSomeNullTimes(sc):
         
     result = computeThroughput(dataRDD)
     assert result == 0.5, "Throughput value incorrect, expected 0.5"
-    
+
+#Test for data with all null times
 def testAllTimesNull(sc):
     from throughput import computeThroughput
     

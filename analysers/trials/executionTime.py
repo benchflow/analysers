@@ -6,6 +6,7 @@ from datetime import timedelta
 from pyspark_cassandra import CassandraSparkContext
 from pyspark import SparkConf
 
+#Compute the execution time
 def computeExecutionTime(dataRDD):
     if(dataRDD.isEmpty()):
         return None
@@ -29,6 +30,7 @@ def computeExecutionTime(dataRDD):
     
     return delta
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(sc, dataRDD, experimentID, trialID):
     queries = []
     
@@ -58,18 +60,22 @@ def main():
     conf = SparkConf().setAppName("Process execution time trial analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "process"
     destTable = "trial_execution_time"
     
+    #Obtain data for the computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("process_name", "to_ignore", "source_process_instance_id", "start_time", "end_time", "duration") \
             .where("trial_id=? AND experiment_id=?", trialID, experimentID) \
             .filter(lambda r: r["process_name"] is not None and r["to_ignore"] is False) \
             .repartition(sc.defaultParallelism * partitionsPerCore) \
             .cache()
-            
+    
+    #Create query for Cassandra
     query = createQuery(sc, dataRDD, experimentID, trialID)
     
+    #Save to Cassandra
     sc.parallelize(query, sc.defaultParallelism * partitionsPerCore).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__': main()

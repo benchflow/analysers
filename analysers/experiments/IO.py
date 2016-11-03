@@ -15,9 +15,11 @@ from pyspark_cassandra import CassandraSparkContext
 from pyspark_cassandra import RowFormat
 from pyspark import SparkConf
 
+#Create the queries containg the results of the computations to pass to Cassandra
 def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID):
     from commons import computeMode, computeMetrics
     
+    #Retrieve data for the computations
     dataRDD = sc.cassandraTable(cassandraKeyspace, srcTable) \
             .select("device", op) \
             .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID) \
@@ -25,6 +27,7 @@ def createQuery(op, dev, sc, cassandraKeyspace, srcTable, experimentID, containe
             .map(lambda a: (a[op], 1)) \
             .cache()
     
+    #If no data return no values
     if len(dataRDD.collect()) == 0:
         return {"experiment_id":experimentID, "container_name":containerName, "host_id":hostID, "device":dev}
         
@@ -57,9 +60,11 @@ def main():
     conf = SparkConf().setAppName("IO analyser")
     sc = CassandraSparkContext(conf=conf)
 
+    #Source and destination tables
     srcTable = "trial_io"
     destTable = "exp_io"
     
+    #Retrieve list of devices
     data = sc.cassandraTable(cassandraKeyspace, srcTable)\
             .select("device") \
             .where("experiment_id=? AND container_name=? AND host_id=?", experimentID, containerName, hostID) \
@@ -72,6 +77,7 @@ def main():
         
     queries = []
     
+    #Iterate and compute metrics for every device
     for k in devices.keys():
         query = {}
         query.update(createQuery("reads", k, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID))
@@ -79,6 +85,7 @@ def main():
         query.update(createQuery("total", k, sc, cassandraKeyspace, srcTable, experimentID, containerName, hostID))
         queries.append(query)
     
+    #Save to Cassandra
     sc.parallelize(queries).saveToCassandra(cassandraKeyspace, destTable)
     
 if __name__ == '__main__':
